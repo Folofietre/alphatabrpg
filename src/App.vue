@@ -10,7 +10,10 @@
         <CharacterStats />
         <ScorePlayer />
       </div>
-      <TabLibrary />
+      <aside class="sidebar">
+        <CustomScore />
+        <TabLibrary />
+      </aside>
     </div>
   </main>
 </template>
@@ -22,6 +25,7 @@ import CharacterStats from '@/components/CharacterStats.vue'
 import ScorePlayer from '@/components/ScorePlayer.vue'
 import SettingsMenu from '@/components/SettingsMenu.vue'
 import TabLibrary from '@/components/TabLibrary.vue'
+import CustomScore from '@/components/CustomScore.vue'
 
 const store = useCharacterStore()
 onMounted(() => store.load())
@@ -29,12 +33,10 @@ onMounted(() => store.load())
 
 <style scoped>
 .app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 1.5rem;
+  padding: 0.75rem 1rem;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1rem;
 }
 header {
   display: grid;
@@ -46,6 +48,8 @@ header h1 {
   margin: 0;
   font-size: 1.6rem;
   text-align: center;
+  color: var(--text-h);
+  letter-spacing: 0.02em;
 }
 .spacer {
   width: 38px;
@@ -57,6 +61,12 @@ header h1 {
   align-items: start;
 }
 .main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+}
+.sidebar {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;

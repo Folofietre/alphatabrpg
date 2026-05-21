@@ -1,22 +1,94 @@
-export function rollNoteAccuracy(dexterity, note, prevPitch = 60) {
-  const pitch = note.realValue ?? note.value ?? 60
-  const interval = Math.abs(pitch - prevPitch)
-
-  const difficulty = Math.min(1.0, interval / 12 + (note.duration?.value > 8 ? 0.2 : 0))
-  const threshold = dexterity - difficulty * 0.4
-
-  const roll = Math.random()
-  const success = roll < threshold
-
-  const semitones = success ? 0 : (Math.random() > 0.5 ? 1 : -1) * Math.ceil(Math.random() * 3)
-
-  return { success, semitones }
+function realDurationSeconds(durationValue, effectiveBpm) {
+  const v = durationValue ?? 4
+  const quarterSeconds = 60 / Math.max(1, effectiveBpm)
+  return v < 0
+    ? quarterSeconds * 4 * Math.abs(v)
+    : quarterSeconds * (4 / Math.max(1, v))
 }
 
-export function fatiguePerBeat(endurance, bpm = 120) {
-  const baseCost = 0.003
-  const tempoFactor = bpm / 120
-  return baseCost * tempoFactor * (1 - endurance * 0.6)
+// Onsets per minute for a single beat at a given (raw) score tempo.
+function beatOnsetRate(beat, bpm) {
+  const v = beat.duration?.value ?? 4
+  const factor = v < 0 ? 1 / (4 * Math.abs(v)) : v / 4
+  return bpm * factor
+}
+
+// 95th percentile of onset rates across beats with notes. Used to derive the
+// playback multiplier given the character's Speed stat.
+export function scoreOnsetRate(score) {
+  if (!score) return 120
+  const track = score.tracks?.[0]
+  if (!track) return 120
+  const bpm = score.tempo ?? 120
+
+  const rates = []
+  for (const staff of track.staves ?? []) {
+    for (const bar of staff.bars ?? []) {
+      for (const voice of bar.voices ?? []) {
+        for (const beat of voice.beats ?? []) {
+          if (!(beat.notes?.length)) continue
+          rates.push(beatOnsetRate(beat, bpm))
+        }
+      }
+    }
+  }
+  if (rates.length === 0) return bpm
+  rates.sort((a, b) => a - b)
+  const idx = Math.floor(0.95 * (rates.length - 1))
+  return rates[idx]
+}
+
+export function rollBeatAccuracy(dexterity, beat, prevPitch = 60, effectiveBpm = 120) {
+  const notes = beat.notes ?? []
+  if (notes.length === 0) return { success: true, semitones: 0, lastPitch: prevPitch }
+
+  const seconds = realDurationSeconds(beat.duration?.value, effectiveBpm)
+  const ease = Math.max(0, Math.min(1, (seconds - 0.05) / 0.35))
+
+  let maxInterval = 0
+  let lastPitch = prevPitch
+  for (const note of notes) {
+    const p = note.realValue ?? note.value ?? prevPitch
+    maxInterval = Math.max(maxInterval, Math.abs(p - prevPitch))
+    lastPitch = p
+  }
+
+  const intervalPenalty = Math.min(0.4, Math.max(0, maxInterval - 2) / 30)
+  const chordPenalty = Math.max(0, notes.length - 1) * 0.08
+  const speedPenalty = (1 - ease) * 0.45
+
+  const skill = Math.min(1, dexterity + ease * 0.5)
+  const threshold = skill - intervalPenalty - chordPenalty - speedPenalty
+
+  const success = Math.random() < threshold
+  const semitones = success
+    ? 0
+    : (Math.random() > 0.5 ? 1 : -1) * (1 + Math.floor(Math.random() * 3))
+
+  return { success, semitones, lastPitch }
+}
+
+export function beatExhaustion(beat, prevPitch = 60, effectiveBpm = 120) {
+  const notes = beat.notes ?? []
+  if (notes.length === 0) return 0
+
+  const seconds = realDurationSeconds(beat.duration?.value, effectiveBpm)
+  // Baseline: a quarter note at 120 BPM (0.5s) costs 1.0.
+  // Faster notes cost more, longer notes cost less. Sqrt softens the curve.
+  const speedFactor = Math.sqrt(0.5 / Math.max(0.05, seconds))
+
+  let maxInterval = 0
+  for (const note of notes) {
+    const p = note.realValue ?? note.value ?? prevPitch
+    maxInterval = Math.max(maxInterval, Math.abs(p - prevPitch))
+  }
+  // Intervals up to 2 semitones are free; an octave roughly doubles the cost.
+  const intervalFactor = 1 + Math.max(0, maxInterval - 2) / 12
+
+  // Each extra note in a chord adds 15%.
+  const chordFactor = 1 + Math.max(0, notes.length - 1) * 0.15
+
+  return speedFactor * intervalFactor * chordFactor
 }
 
 export function analyzeScore(score) {

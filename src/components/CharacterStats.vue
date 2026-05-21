@@ -4,9 +4,9 @@
     <div v-for="stat in stats" :key="stat.key" class="stat">
       <label>{{ stat.label }}</label>
       <div class="bar">
-        <div class="fill" :style="{ width: `${stat.value * 100}%` }" />
+        <div class="fill" :style="{ width: `${stat.ratio * 100}%` }" />
       </div>
-      <span class="value">{{ Math.round(stat.value * 100) }}%</span>
+      <span class="value">{{ stat.display }}</span>
     </div>
   </section>
 </template>
@@ -15,12 +15,30 @@
 import { computed } from 'vue'
 import { useCharacterStore } from '@/stores/character'
 
+const SPEED_CAP = 600
+const ENDURANCE_CAP = 500
+
 const store = useCharacterStore()
 
 const stats = computed(() => [
-  { key: 'speed', label: 'Speed', value: store.character.speed },
-  { key: 'dexterity', label: 'Dexterity', value: store.character.dexterity },
-  { key: 'endurance', label: 'Endurance', value: store.character.endurance },
+  {
+    key: 'speed',
+    label: 'Speed',
+    ratio: Math.min(1, store.character.speed / SPEED_CAP),
+    display: `${store.character.speed} opm`,
+  },
+  {
+    key: 'dexterity',
+    label: 'Dexterity',
+    ratio: store.character.dexterity,
+    display: `${Math.round(store.character.dexterity * 100)}%`,
+  },
+  {
+    key: 'endurance',
+    label: 'Endurance',
+    ratio: Math.min(1, store.character.endurance / ENDURANCE_CAP),
+    display: `${store.character.endurance} notes`,
+  },
 ])
 </script>
 
@@ -31,7 +49,8 @@ const stats = computed(() => [
   gap: 0.5rem;
   padding: 1rem;
   border-radius: 0.5rem;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
 }
 .stats h2 {
   margin: 0 0 0.25rem;
@@ -39,7 +58,7 @@ const stats = computed(() => [
 }
 .stat {
   display: grid;
-  grid-template-columns: 90px 1fr 48px;
+  grid-template-columns: 90px 1fr 80px;
   align-items: center;
   gap: 0.5rem;
 }
@@ -49,13 +68,13 @@ const stats = computed(() => [
 }
 .bar {
   height: 12px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--panel-strong);
   border-radius: 999px;
   overflow: hidden;
 }
 .fill {
   height: 100%;
-  background: linear-gradient(90deg, #5fa8ff, #a06bff);
+  background: linear-gradient(90deg, var(--muted-olive), var(--palm-leaf));
   transition: width 0.4s ease;
 }
 .value {

@@ -1,17 +1,15 @@
 <template>
   <section class="score-player">
-    <FileDropzone @file-loaded="onFileLoaded" />
-
     <div ref="playerContainer" class="alphatab-host" />
 
-    <div v-if="isReady" class="controls">
+    <div v-if="isReady && !sessionResult" class="controls">
       <button @click="playPause">{{ isPlaying ? 'Pause' : 'Play' }}</button>
-      <button @click="stop">Stop</button>
+      <button @click="stop" :disabled="!isPlaying">Stop</button>
 
       <div class="fatigue">
         <label>Stamina</label>
-        <progress :value="store.fatigue" max="1" />
-        <span class="fatigue-value">{{ Math.round(store.fatigue * 100) }}%</span>
+        <progress :value="store.stamina" max="1" />
+        <span class="fatigue-value">{{ Math.round(store.stamina * 100) }}%</span>
       </div>
     </div>
 
@@ -28,7 +26,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useAlphaTab } from '@/composables/useAlphaTab'
 import { useCharacterStore } from '@/stores/character'
 import { useTabSelection } from '@/composables/useTabSelection'
-import FileDropzone from './FileDropzone.vue'
+import { usePlaybackLock } from '@/composables/usePlaybackLock'
 import SessionResult from './SessionResult.vue'
 
 const playerContainer = ref(null)
@@ -39,31 +37,32 @@ const {
   loadUrl,
   playPause,
   stop,
+  rewind,
   clearSessionResult,
   isReady,
   isPlaying,
   sessionResult,
 } = useAlphaTab(playerContainer)
 
-const { pendingTab } = useTabSelection()
+const { pendingScore } = useTabSelection()
+const { setPlaying } = usePlaybackLock()
 
 onMounted(() => init())
 
-watch(pendingTab, (tab) => {
-  if (!tab) return
-  clearSessionResult()
-  loadUrl(tab.file)
-})
+watch(isPlaying, (v) => setPlaying(v))
 
-function onFileLoaded(file) {
+watch(pendingScore, (score) => {
+  if (!score) return
+  if (isPlaying.value) return // locked: can't switch while playing
   clearSessionResult()
-  loadFile(file)
-}
+  if (score.kind === 'url') loadUrl(score.url)
+  else if (score.kind === 'file') loadFile(score.file)
+})
 
 function onReplay() {
   clearSessionResult()
-  store.resetFatigue()
-  stop()
+  store.resetStamina()
+  rewind()
 }
 </script>
 
@@ -76,28 +75,29 @@ function onReplay() {
 .alphatab-host {
   width: 100%;
   height: 320px;
-  background: #fff;
-  color: #111;
+  background: var(--bg-surface);
+  color: var(--ash-brown);
   border-radius: 0.5rem;
+  border: 1px solid var(--panel-border);
   overflow-x: auto;
   overflow-y: hidden;
 }
 .alphatab-host :deep(.at-surface) {
-  color: #111;
+  color: var(--ash-brown);
 }
 .alphatab-host :deep(.at-cursor-bar) {
-  background: rgba(255, 221, 0, 0.25);
+  background: rgba(173, 193, 120, 0.32); /* muted-olive translucent */
 }
 .alphatab-host :deep(.at-cursor-beat) {
-  background: #ff4d4d;
+  background: var(--faded-copper);
   width: 3px;
 }
 .alphatab-host :deep(.at-selection div) {
-  background: rgba(64, 130, 255, 0.18);
+  background: rgba(123, 143, 75, 0.18);
 }
 .alphatab-host :deep(.at-highlight) * {
-  fill: #1e88ff;
-  stroke: #1e88ff;
+  fill: var(--palm-leaf);
+  stroke: var(--palm-leaf);
 }
 .controls {
   display: flex;

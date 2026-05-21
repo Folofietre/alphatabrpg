@@ -2,7 +2,7 @@ import { ref, watch, onUnmounted } from 'vue'
 import * as alphaTab from '@coderline/alphatab'
 import { useCharacterStore } from '@/stores/character'
 import { useSettings } from '@/composables/useSettings'
-import { rollNoteAccuracy, fatiguePerBeat } from '@/utils/rpgEngine'
+import { rollBeatAccuracy, beatExhaustion, scoreOnsetRate } from '@/utils/rpgEngine'
 
 export function useAlphaTab(containerRef) {
   const store = useCharacterStore()
@@ -12,7 +12,64 @@ export function useAlphaTab(containerRef) {
   const isPlaying = ref(false)
   const sessionStats = ref({ totalBeats: 0, successBeats: 0 })
   const sessionResult = ref(null)
-  let prevPitch = 60
+
+  let currentTransposition = 0
+  let nextOutcome = null    // outcome decided for the *next* beat to be played
+  let lastPitch = 60        // last pitch resolved by a roll (for difficulty chaining)
+  let playbackMultiplier = 1 // computed at scoreLoaded from speed stat vs score onset rate
+
+  function applyTransposition(semitones) {
+    if (!api.value || semitones === currentTransposition) return
+    api.value.changeTrackTranspositionPitch(api.value.tracks, semitones)
+    currentTransposition = semitones
+  }
+
+  function effectiveBpm() {
+    return (api.value?.score?.tempo ?? 120) * playbackMultiplier
+  }
+
+  function preRoll(beat) {
+    if (!beat) {
+      nextOutcome = null
+      applyTransposition(0)
+      return
+    }
+    const roll = rollBeatAccuracy(store.accuracyThreshold, beat, lastPitch, effectiveBpm())
+    lastPitch = roll.lastPitch
+    nextOutcome = { success: roll.success, beat }
+    applyTransposition(roll.success ? 0 : roll.semitones)
+  }
+
+  function firstBeatOf(score) {
+    return score?.tracks?.[0]?.staves?.[0]?.bars?.[0]?.voices?.[0]?.beats?.[0] ?? null
+  }
+
+  function endSession(outcome) {
+    // outcome: 'completed' | 'stopped' | 'exhausted'
+    if (!api.value) return
+    if (sessionResult.value) return
+    if (sessionStats.value.totalBeats === 0) return
+
+    applyTransposition(0)
+    nextOutcome = null
+    api.value.stop()
+
+    const accuracy = sessionStats.value.successBeats / sessionStats.value.totalBeats
+    const title = api.value.score?.title || 'Unknown score'
+    const beatCount = sessionStats.value.totalBeats
+
+    const xpGained = store.applySessionXP({ title, accuracy, outcome, beatCount })
+
+    sessionResult.value = {
+      title,
+      accuracy,
+      outcome,
+      beatCount,
+      xpGained,
+      tooShort: xpGained?.tooShort === true,
+    }
+    isPlaying.value = false
+  }
 
   function init() {
     if (!containerRef.value) return
@@ -37,50 +94,51 @@ export function useAlphaTab(containerRef) {
 
     api.value.masterVolume = volume.value
 
-    let currentTransposition = 0
-    function applyTransposition(semitones) {
-      if (semitones === currentTransposition) return
-      api.value.changeTrackTranspositionPitch(api.value.tracks, semitones)
-      currentTransposition = semitones
-    }
-
     api.value.scoreLoaded.on(() => {
-      api.value.playbackSpeed = store.playbackSpeed
+      // Single-track game: solo the rendered (first) track and mute the rest
+      // so only the displayed instrument is audible.
+      const score = api.value.score
+      if (score?.tracks?.length > 1) {
+        api.value.changeTrackMute(score.tracks.slice(1), true)
+      }
+      if (api.value.tracks?.length) {
+        api.value.changeTrackSolo(api.value.tracks, true)
+      }
+
+      // Derive playback tempo from character Speed vs the score's onset rate (P95).
+      const onsetRate = scoreOnsetRate(score)
+      playbackMultiplier = Math.min(1, store.character.speed / Math.max(1, onsetRate))
+      api.value.playbackSpeed = playbackMultiplier
       api.value.masterVolume = volume.value
       isReady.value = true
       sessionStats.value = { totalBeats: 0, successBeats: 0 }
       sessionResult.value = null
-      prevPitch = 60
+      lastPitch = 60
       currentTransposition = 0
-      store.resetFatigue()
+      nextOutcome = null
+      store.resetStamina()
+      // Pre-roll for the very first beat so the wrong pitch is already set
+      // when audio begins.
+      preRoll(firstBeatOf(api.value.score))
     })
 
     api.value.playedBeatChanged.on((beat) => {
       if (!beat) return
+
+      // The outcome for THIS beat was decided in the previous tick (pre-rolled).
       sessionStats.value.totalBeats++
+      if (nextOutcome?.success) sessionStats.value.successBeats++
 
-      let beatSemitones = 0
-      let beatFailed = false
+      // Stamina cost based on the played beat's actual difficulty.
+      const cost = beatExhaustion(beat, lastPitch, effectiveBpm())
+      store.spendNotes(cost)
 
-      for (const note of beat.notes ?? []) {
-        const { success, semitones } = rollNoteAccuracy(store.accuracyThreshold, note, prevPitch)
-        if (success) {
-          sessionStats.value.successBeats++
-        } else {
-          beatFailed = true
-          if (semitones !== 0 && beatSemitones === 0) beatSemitones = semitones
-        }
-        prevPitch = note.realValue ?? note.value ?? prevPitch
-      }
+      // Pre-roll for the next beat so its transposition is set before audio
+      // plays. This avoids the synth pitch-bend slide.
+      preRoll(beat.nextBeat)
 
-      applyTransposition(beatFailed ? beatSemitones : 0)
-
-      const bpm = api.value.score?.tempo ?? 120
-      store.drainFatigue(fatiguePerBeat(store.character.endurance, bpm))
-
-      if (store.fatigue <= 0) {
-        api.value.pause()
-        isPlaying.value = false
+      if (store.stamina <= 0) {
+        endSession('exhausted')
       }
     })
 
@@ -89,29 +147,7 @@ export function useAlphaTab(containerRef) {
     })
 
     api.value.playerFinished.on(() => {
-      applyTransposition(0)
-      const accuracy = sessionStats.value.totalBeats > 0
-        ? sessionStats.value.successBeats / sessionStats.value.totalBeats
-        : 0
-      const completed = store.fatigue > 0
-      const title = api.value.score?.title || 'Unknown score'
-      const beatCount = sessionStats.value.totalBeats
-
-      const before = { ...store.character }
-      store.applySessionXP({ title, accuracy, completed, beatCount })
-      const after = store.character
-      sessionResult.value = {
-        title,
-        accuracy,
-        completed,
-        beatCount,
-        xpGained: {
-          speed: after.speed - before.speed,
-          dexterity: after.dexterity - before.dexterity,
-          endurance: after.endurance - before.endurance,
-        },
-      }
-      isPlaying.value = false
+      endSession(store.stamina > 0 ? 'completed' : 'exhausted')
     })
   }
 
@@ -136,9 +172,17 @@ export function useAlphaTab(containerRef) {
   }
 
   function stop() {
+    endSession('stopped')
+  }
+
+  function rewind() {
     if (!api.value) return
-    api.value.changeTrackTranspositionPitch(api.value.tracks, 0)
+    applyTransposition(0)
     api.value.stop()
+    sessionStats.value = { totalBeats: 0, successBeats: 0 }
+    lastPitch = 60
+    nextOutcome = null
+    preRoll(firstBeatOf(api.value.score))
   }
 
   function clearSessionResult() {
@@ -156,6 +200,7 @@ export function useAlphaTab(containerRef) {
     loadUrl,
     playPause,
     stop,
+    rewind,
     clearSessionResult,
     isReady,
     isPlaying,

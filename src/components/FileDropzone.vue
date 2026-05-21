@@ -1,9 +1,9 @@
 <template>
   <label
     class="dropzone"
-    :class="{ active: isDragging }"
-    @dragover.prevent="isDragging = true"
-    @dragenter.prevent="isDragging = true"
+    :class="{ active: isDragging, disabled }"
+    @dragover.prevent="onDragOver"
+    @dragenter.prevent="onDragOver"
     @dragleave.prevent="isDragging = false"
     @drop.prevent="onDrop"
   >
@@ -11,6 +11,7 @@
       type="file"
       :accept="accept"
       class="file-input"
+      :disabled="disabled"
       @change="onPicked"
     />
     <span v-if="!filename">
@@ -26,6 +27,9 @@
 <script setup>
 import { ref } from 'vue'
 
+const props = defineProps({
+  disabled: { type: Boolean, default: false },
+})
 const emit = defineEmits(['file-loaded'])
 
 const accept = '.gp,.gp3,.gp4,.gp5,.gpx,.xml,.musicxml'
@@ -33,13 +37,19 @@ const isDragging = ref(false)
 const filename = ref('')
 
 function handleFile(file) {
-  if (!file) return
+  if (!file || props.disabled) return
   filename.value = file.name
   emit('file-loaded', file)
 }
 
+function onDragOver() {
+  if (props.disabled) return
+  isDragging.value = true
+}
+
 function onDrop(e) {
   isDragging.value = false
+  if (props.disabled) return
   handleFile(e.dataTransfer.files?.[0])
 }
 
@@ -56,15 +66,26 @@ function onPicked(e) {
   justify-content: center;
   gap: 0.25rem;
   padding: 1.5rem;
-  border: 2px dashed var(--color-border, #888);
+  border: 2px dashed var(--panel-border);
   border-radius: 0.5rem;
+  background: var(--panel);
+  color: var(--text);
   cursor: pointer;
   text-align: center;
-  transition: border-color 0.2s, background-color 0.2s;
+  transition: border-color 0.2s, background-color 0.2s, opacity 0.2s, color 0.2s;
+}
+.dropzone:hover:not(.disabled) {
+  border-color: var(--accent-border);
+  color: var(--accent);
 }
 .dropzone.active {
-  border-color: #5fa8ff;
-  background-color: rgba(95, 168, 255, 0.08);
+  border-color: var(--accent);
+  background-color: var(--accent-bg);
+  color: var(--accent);
+}
+.dropzone.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 .dropzone small {
   display: block;

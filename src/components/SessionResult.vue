@@ -1,6 +1,6 @@
 <template>
-  <div class="session-result">
-    <h3>{{ result.completed ? 'Session complete' : 'Session interrupted' }}</h3>
+  <div class="session-result" :class="`outcome-${result.outcome}`">
+    <h3>{{ headline }}</h3>
     <p class="title">{{ result.title }}</p>
 
     <ul class="metrics">
@@ -13,24 +13,47 @@
         <strong>{{ result.beatCount }}</strong>
       </li>
       <li>
-        <span>Status</span>
-        <strong>{{ result.completed ? 'Finished' : 'Gave up' }}</strong>
+        <span>Outcome</span>
+        <strong>{{ outcomeLabel }}</strong>
       </li>
     </ul>
 
-    <h4>Gains</h4>
-    <ul class="gains">
-      <li>Speed <strong>+{{ format(result.xpGained.speed) }}</strong></li>
-      <li>Dexterity <strong>+{{ format(result.xpGained.dexterity) }}</strong></li>
-      <li>Endurance <strong>+{{ format(result.xpGained.endurance) }}</strong></li>
-    </ul>
+    <p v-if="result.tooShort" class="too-short">
+      Too short to count. No XP, no penalty.
+    </p>
+
+    <template v-else>
+      <h4>{{ anyGain ? 'Gains & losses' : 'No changes' }}</h4>
+      <ul class="gains">
+        <li>
+          Speed
+          <strong :class="signClass(result.xpGained.speed)">
+            {{ signed(Math.round(result.xpGained.speed)) }} opm
+          </strong>
+        </li>
+        <li>
+          Dexterity
+          <strong :class="signClass(result.xpGained.dexterity)">
+            {{ signedPct(result.xpGained.dexterity) }}
+          </strong>
+        </li>
+        <li>
+          Endurance
+          <strong :class="signClass(result.xpGained.endurance)">
+            {{ signed(Math.round(result.xpGained.endurance)) }} notes
+          </strong>
+        </li>
+      </ul>
+    </template>
 
     <button class="replay" @click="$emit('replay')">Replay</button>
   </div>
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue'
+
+const props = defineProps({
   result: {
     type: Object,
     required: true,
@@ -38,8 +61,36 @@ defineProps({
 })
 defineEmits(['replay'])
 
-function format(v) {
-  return (v * 100).toFixed(1) + '%'
+const HEADLINES = {
+  completed: 'Session complete',
+  stopped: 'Gave up',
+  exhausted: 'Collapsed from exhaustion',
+}
+const OUTCOMES = {
+  completed: 'Finished',
+  stopped: 'Stopped',
+  exhausted: 'Exhausted',
+}
+
+const headline = computed(() => HEADLINES[props.result.outcome] ?? 'Session ended')
+const outcomeLabel = computed(() => OUTCOMES[props.result.outcome] ?? '—')
+const anyGain = computed(() => {
+  const g = props.result.xpGained
+  return g && (g.speed !== 0 || g.dexterity !== 0 || g.endurance !== 0)
+})
+
+function signed(n) {
+  if (n > 0) return `+${n}`
+  return `${n}`
+}
+function signedPct(v) {
+  const sign = v > 0 ? '+' : ''
+  return `${sign}${(v * 100).toFixed(1)}%`
+}
+function signClass(v) {
+  if (v > 0) return 'gain-positive'
+  if (v < 0) return 'gain-negative'
+  return 'gain-neutral'
 }
 </script>
 
@@ -47,11 +98,19 @@ function format(v) {
 .session-result {
   padding: 1rem 1.25rem;
   border-radius: 0.5rem;
-  background: rgba(95, 168, 255, 0.08);
-  border: 1px solid rgba(95, 168, 255, 0.25);
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+.session-result.outcome-stopped {
+  background: var(--warn-bg);
+  border-color: var(--warn-border);
+}
+.session-result.outcome-exhausted {
+  background: rgba(108, 88, 76, 0.10);
+  border-color: rgba(108, 88, 76, 0.40);
 }
 .session-result h3 {
   margin: 0;
@@ -64,6 +123,12 @@ function format(v) {
 .title {
   margin: 0;
   opacity: 0.8;
+  font-style: italic;
+}
+.too-short {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  opacity: 0.75;
   font-style: italic;
 }
 .metrics,
@@ -86,6 +151,16 @@ function format(v) {
 .metrics strong,
 .gains strong {
   font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+.gain-positive {
+  color: var(--gain);
+}
+.gain-negative {
+  color: var(--loss);
+}
+.gain-neutral {
+  opacity: 0.6;
 }
 .replay {
   align-self: flex-start;

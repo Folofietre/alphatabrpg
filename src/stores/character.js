@@ -1,25 +1,53 @@
 import { defineStore } from 'pinia'
 
-const SAVE_KEY = 'alphatab_rpg_save'
+const SAVE_KEY = 'alphatab_rpg_save_v3'
+
+const SPEED_CAP = 600
+const ENDURANCE_CAP = 500
+
+const SPEED_FLOOR = 30
+const DEX_FLOOR = 0.20
+const ENDURANCE_FLOOR = 30
+
+const MIN_BEATS_FOR_OUTCOME = 10
 
 const defaultCharacter = () => ({
   name: 'Musician',
-  speed: 0.35,
-  dexterity: 0.20,
-  endurance: 0.40,
+  speed: SPEED_FLOOR,
+  dexterity: DEX_FLOOR,
+  endurance: ENDURANCE_FLOOR,
 })
+
+function gainsFor(outcome, accuracy) {
+  // outcome: 'completed' | 'stopped' | 'exhausted'
+  if (outcome === 'completed') {
+    return {
+      speed: 10,
+      dexterity: accuracy > 0.7 ? 0.020 : 0.008,
+      endurance: 5,
+    }
+  }
+  if (outcome === 'stopped') {
+    return { speed: 1, dexterity: 0.005, endurance: -2 }
+  }
+  // exhausted
+  return { speed: 0, dexterity: 0, endurance: -5 }
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value))
+}
 
 export const useCharacterStore = defineStore('character', {
   state: () => ({
     character: defaultCharacter(),
     history: [],
-    fatigue: 1.0,
+    notesPlayed: 0,
   }),
 
   getters: {
-    playbackSpeed: (s) => Math.min(s.character.speed, 1.0),
     accuracyThreshold: (s) => s.character.dexterity,
-    maxFatigue: (s) => s.character.endurance,
+    stamina: (s) => Math.max(0, 1 - s.notesPlayed / Math.max(1, s.character.endurance)),
   },
 
   actions: {
@@ -40,38 +68,57 @@ export const useCharacterStore = defineStore('character', {
       }))
     },
 
-    resetFatigue() {
-      this.fatigue = 1.0
+    resetStamina() {
+      this.notesPlayed = 0
     },
 
-    drainFatigue(amount) {
-      this.fatigue = Math.max(0, this.fatigue - amount)
+    spendNotes(amount) {
+      this.notesPlayed += amount
     },
 
-    applySessionXP({ title, accuracy, completed, beatCount }) {
-      const xpGained = {
-        speed:     completed ? 0.015 : 0.005,
-        dexterity: accuracy > 0.7 ? 0.020 : 0.008,
-        endurance: completed ? 0.012 : 0.004,
+    applySessionXP({ title, accuracy, outcome, beatCount }) {
+      // Sessions too short to count: no XP, no penalty (player barely tried).
+      if (beatCount < MIN_BEATS_FOR_OUTCOME) {
+        this.history.unshift({
+          title, accuracy, outcome, beatCount,
+          date: new Date().toISOString(),
+          xpGained: { speed: 0, dexterity: 0, endurance: 0 },
+          tooShort: true,
+        })
+        if (this.history.length > 20) this.history.pop()
+        this.save()
+        return { speed: 0, dexterity: 0, endurance: 0, tooShort: true }
       }
-      this.character.speed     = Math.min(1.0, this.character.speed     + xpGained.speed)
-      this.character.dexterity = Math.min(1.0, this.character.dexterity + xpGained.dexterity)
-      this.character.endurance = Math.min(1.0, this.character.endurance + xpGained.endurance)
+
+      const xpGained = gainsFor(outcome, accuracy)
+      const before = { ...this.character }
+
+      this.character.speed     = clamp(this.character.speed     + xpGained.speed,     SPEED_FLOOR, SPEED_CAP)
+      this.character.dexterity = clamp(this.character.dexterity + xpGained.dexterity, DEX_FLOOR,   1.0)
+      this.character.endurance = clamp(this.character.endurance + xpGained.endurance, ENDURANCE_FLOOR, ENDURANCE_CAP)
+
+      // Actual deltas after clamping (may be smaller than nominal if hitting a floor/cap).
+      const actual = {
+        speed: this.character.speed - before.speed,
+        dexterity: this.character.dexterity - before.dexterity,
+        endurance: this.character.endurance - before.endurance,
+      }
 
       this.history.unshift({
-        title, accuracy, completed,
+        title, accuracy, outcome, beatCount,
         date: new Date().toISOString(),
-        xpGained,
+        xpGained: actual,
       })
       if (this.history.length > 20) this.history.pop()
 
       this.save()
+      return actual
     },
 
     reset() {
       this.character = defaultCharacter()
       this.history = []
-      this.fatigue = 1.0
+      this.notesPlayed = 0
       localStorage.removeItem(SAVE_KEY)
     },
   },

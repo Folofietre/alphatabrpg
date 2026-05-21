@@ -83,21 +83,23 @@ onBeforeUnmount(() => {
   width: 38px;
   height: 38px;
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--panel-border);
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.04);
-  color: inherit;
+  background: var(--panel);
+  color: var(--text);
   cursor: pointer;
-  transition: transform 0.4s ease, background-color 0.2s, border-color 0.2s;
+  transition: transform 0.4s ease, background-color 0.2s, border-color 0.2s, color 0.2s;
 }
 .gear:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.25);
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+  color: var(--accent);
 }
 .settings-menu.open .gear {
   transform: rotate(60deg);
-  border-color: #5fa8ff;
-  color: #5fa8ff;
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-bg);
 }
 .panel {
   position: absolute;
@@ -105,10 +107,10 @@ onBeforeUnmount(() => {
   left: 0;
   min-width: 240px;
   padding: 0.75rem 1rem 1rem;
-  background: var(--bg, #1b1c22);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--bg-elevated);
+  border: 1px solid var(--panel-border);
   border-radius: 0.5rem;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow);
   z-index: 10;
   display: flex;
   flex-direction: column;
@@ -137,6 +139,6 @@ onBeforeUnmount(() => {
 }
 input[type='range'] {
   width: 100%;
-  accent-color: #5fa8ff;
+  accent-color: var(--palm-leaf);
 }
 </style>
