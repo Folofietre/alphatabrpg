@@ -33,6 +33,22 @@
         />
       </label>
 
+      <label class="row">
+        <span class="row-label">
+          <span>Backing volume</span>
+          <span class="row-value">{{ Math.round(backingVolume * 100) }}%</span>
+        </span>
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          :value="backingVolume"
+          @input="onBackingInput"
+        />
+        <small class="row-help">Other instruments in the score.</small>
+      </label>
+
       <div class="divider" />
 
       <div class="danger-zone">
@@ -58,7 +74,7 @@ import { useSettings } from '@/composables/useSettings'
 import { usePlaybackLock } from '@/composables/usePlaybackLock'
 import { useCharacterStore } from '@/stores/character'
 
-const { volume, setVolume } = useSettings()
+const { volume, setVolume, backingVolume, setBackingVolume } = useSettings()
 const { isPlaying } = usePlaybackLock()
 const store = useCharacterStore()
 
@@ -71,6 +87,10 @@ function toggle() {
 
 function onVolumeInput(e) {
   setVolume(parseFloat(e.target.value))
+}
+
+function onBackingInput(e) {
+  setBackingVolume(parseFloat(e.target.value))
 }
 
 function onResetClick() {
@@ -166,6 +186,11 @@ onBeforeUnmount(() => {
 .row-value {
   font-variant-numeric: tabular-nums;
   opacity: 0.7;
+}
+.row-help {
+  font-size: 0.72rem;
+  opacity: 0.6;
+  margin-top: 0.1rem;
 }
 input[type='range'] {
   width: 100%;

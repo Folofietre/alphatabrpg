@@ -79,20 +79,26 @@ const headerHint = computed(() => {
   return 'Click to queue.'
 })
 
-// Group manifest tabs by category and evaluate each unlock rule. We do not
-// pre-filter by instrument here — the manifest does not carry instrument info
-// yet, and lazy filtering at load time surfaces a `loadError` if the tab is
-// truly incompatible with the player's instrument.
+// Filter manifest tabs to those playable for the character's instrument,
+// then group by category and evaluate each unlock rule.
+// `difficulty.isPlayable(id)` returns:
+//   - true   → playable (keep)
+//   - false  → not playable (hide)
+//   - null   → still parsing (keep optimistically; it'll filter itself once known)
 const visibleCategories = computed(() => {
   const allTabs = manifest.value.tabs
+  const playableTabs = allTabs.filter((t) => difficulty.isPlayable(t.id) !== false)
+
+  // Unlock context restricted to the playable subset so `all_completed` only
+  // counts what this character can actually play.
   const ctx = buildUnlockContext({
-    tabs: allTabs,
+    tabs: playableTabs,
     completedTabs: store.completedTabs,
     character: store.character,
   })
 
   const categories = manifest.value.categories.map((cat) => {
-    const tabsInCat = allTabs
+    const tabsInCat = playableTabs
       .filter((t) => t.category === cat.id)
       .map((t) => ({ ...t, completed: !!store.completedTabs[t.id] }))
     const completedCount = tabsInCat.filter((t) => t.completed).length
@@ -101,7 +107,7 @@ const visibleCategories = computed(() => {
   })
 
   // Hide locked categories that have no hint, and hide unlocked categories
-  // that ended up with zero tabs (e.g. all filtered out by instrument).
+  // that ended up with zero playable tabs for this instrument.
   return categories.filter((cat) => {
     if (!cat.unlocked && !cat.hint) return false
     if (cat.unlocked && cat.tabs.length === 0) return false

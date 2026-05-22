@@ -15,7 +15,10 @@ export function evaluateUnlock(rule, ctx) {
 
     case 'all_completed': {
       const tabs = ctx.tabsByCategory?.[rule.category] ?? []
-      if (tabs.length === 0) return false // empty category can never satisfy this
+      // If the category has zero tabs *for this character's instrument*, the
+      // rule is trivially satisfied — otherwise the player would be locked
+      // behind a category they can't even see.
+      if (tabs.length === 0) return true
       return tabs.every((tabId) => ctx.completedTabsSet?.has(tabId))
     }
 

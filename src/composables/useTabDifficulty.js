@@ -10,7 +10,9 @@ function difficultyToStars(d) {
   return Math.max(1, Math.min(5, Math.ceil(d * 5)))
 }
 
-// Module-scoped cache: tabId → { stars, label, loading, error }
+// Module-scoped cache: tabId → { stars, label, playable, loading, error }
+// `playable` reflects whether `findPlayableTrack(score, playerInstrument)`
+// returned a non-null track. While `loading` is true, playability is unknown.
 const entries = ref({})
 
 export function useTabDifficulty() {
@@ -23,17 +25,27 @@ export function useTabDifficulty() {
     alphaTab.importer.ScoreLoader.loadScoreAsync(
       tab.file,
       (score) => {
-        const track = findPlayableTrack(score, playerInstrument) ?? score.tracks?.[0]
+        const playableTrack = findPlayableTrack(score, playerInstrument)
+        const track = playableTrack ?? score.tracks?.[0]
         const { estimatedDifficulty } = analyzeScore(score, track)
         const stars = difficultyToStars(estimatedDifficulty)
         entries.value = {
           ...entries.value,
-          [tab.id]: { stars, label: LABELS[stars - 1] },
+          [tab.id]: {
+            stars,
+            label: LABELS[stars - 1],
+            playable: playableTrack !== null,
+          },
         }
       },
       (err) => {
         console.warn('[useTabDifficulty] parse failed for', tab.id, err)
-        entries.value = { ...entries.value, [tab.id]: { error: true } }
+        entries.value = {
+          ...entries.value,
+          // Failed to parse → treat as non-playable so we don't strand the
+          // player on a broken tab they can never load.
+          [tab.id]: { error: true, playable: false },
+        }
       },
     )
   }
@@ -42,5 +54,12 @@ export function useTabDifficulty() {
     return entries.value[tabId] ?? null
   }
 
-  return { ensure, get, entries }
+  // Tri-state: true / false / null (unknown — still parsing).
+  function isPlayable(tabId) {
+    const e = entries.value[tabId]
+    if (!e || e.loading) return null
+    return e.playable === true
+  }
+
+  return { ensure, get, isPlayable, entries }
 }

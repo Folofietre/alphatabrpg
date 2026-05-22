@@ -20,16 +20,24 @@ import FileDropzone from './FileDropzone.vue'
 import { useTabSelection } from '@/composables/useTabSelection'
 import { usePlaybackLock } from '@/composables/usePlaybackLock'
 import { useTabsManifest } from '@/composables/useTabsManifest'
+import { useTabDifficulty } from '@/composables/useTabDifficulty'
 import { useCharacterStore } from '@/stores/character'
 
 const { selectFile } = useTabSelection()
 const { isPlaying } = usePlaybackLock()
 const { manifest } = useTabsManifest()
+const difficulty = useTabDifficulty()
 const store = useCharacterStore()
 
-const totalBuiltinCount = computed(() => manifest.value.tabs.length)
+// Only built-in tabs the current character can actually play count toward the
+// unlock — otherwise a piano player would be locked out forever by a bass-only
+// tab they can't see.
+const playableTabs = computed(() =>
+  manifest.value.tabs.filter((t) => difficulty.isPlayable(t.id) === true),
+)
+const totalBuiltinCount = computed(() => playableTabs.value.length)
 const completedBuiltinCount = computed(() =>
-  manifest.value.tabs.filter((t) => !!store.completedTabs[t.id]).length,
+  playableTabs.value.filter((t) => !!store.completedTabs[t.id]).length,
 )
 const unlocked = computed(
   () => totalBuiltinCount.value > 0 && completedBuiltinCount.value >= totalBuiltinCount.value,

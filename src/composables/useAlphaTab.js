@@ -8,7 +8,7 @@ import { usePlaylist } from '@/composables/usePlaylist'
 
 export function useAlphaTab(containerRef) {
   const store = useCharacterStore()
-  const { volume } = useSettings()
+  const { volume, backingVolume } = useSettings()
   const playlist = usePlaylist()
   const api = ref(null)
   const isReady = ref(false)
@@ -21,7 +21,7 @@ export function useAlphaTab(containerRef) {
 
   let currentTransposition = 0
   let nextOutcome = null    // outcome decided for the *next* beat to be played
-  let lastPitch = 60        // last pitch resolved by a roll (for difficulty chaining)
+  let lastNote = null       // last Note resolved by a roll (drives physicalDistance chaining)
   let playbackMultiplier = 1 // computed at scoreLoaded from speed stat vs score onset rate
 
   function applyTransposition(semitones) {
@@ -40,8 +40,8 @@ export function useAlphaTab(containerRef) {
       applyTransposition(0)
       return
     }
-    const roll = rollBeatAccuracy(store.accuracyThreshold, beat, lastPitch, effectiveBpm())
-    lastPitch = roll.lastPitch
+    const roll = rollBeatAccuracy(store.accuracyThreshold, beat, lastNote, effectiveBpm())
+    lastNote = roll.lastNote
     nextOutcome = { success: roll.success, beat }
     applyTransposition(roll.success ? 0 : roll.semitones)
   }
@@ -179,12 +179,16 @@ export function useAlphaTab(containerRef) {
         api.value.renderTracks([match])
       }
 
-      // Mute every non-matched track for audio cleanup.
-      const others = (score?.tracks ?? []).filter(t => t !== match)
+      // Played track at full volume; the rest plays as a backing band at the
+      // user-configurable backingVolume setting.
+      const others = (score?.tracks ?? []).filter((t) => t !== match)
+      // Reset any previous solo/mute state in case we re-load a score.
+      api.value.changeTrackSolo(score?.tracks ?? [], false)
+      api.value.changeTrackMute(score?.tracks ?? [], false)
+      api.value.changeTrackVolume([match], 1.0)
       if (others.length) {
-        api.value.changeTrackMute(others, true)
+        api.value.changeTrackVolume(others, backingVolume.value)
       }
-      api.value.changeTrackSolo([match], true)
 
       // Derive playback tempo from character Speed vs the score's onset rate (P95)
       // computed on the matched track only.
@@ -195,7 +199,7 @@ export function useAlphaTab(containerRef) {
       isReady.value = true
       sessionStats.value = { totalBeats: 0, successBeats: 0 }
       sessionResult.value = null
-      lastPitch = 60
+      lastNote = null
       currentTransposition = 0
       nextOutcome = null
       // Stamina persists across an active playlist run — reset only when not
@@ -226,7 +230,7 @@ export function useAlphaTab(containerRef) {
       if (nextOutcome?.success) sessionStats.value.successBeats++
 
       // Stamina cost based on the played beat's actual difficulty.
-      const cost = beatExhaustion(beat, lastPitch, effectiveBpm())
+      const cost = beatExhaustion(beat, lastNote, effectiveBpm())
       store.spendNotes(cost)
 
       // Pre-roll for the next beat so its transposition is set before audio
@@ -267,6 +271,13 @@ export function useAlphaTab(containerRef) {
     if (api.value) api.value.masterVolume = v
   })
 
+  // Live re-apply when the user moves the backing-volume slider mid-session.
+  const stopBackingWatch = watch(backingVolume, (v) => {
+    if (!api.value || !playableTrack) return
+    const others = (api.value.score?.tracks ?? []).filter((t) => t !== playableTrack)
+    if (others.length) api.value.changeTrackVolume(others, v)
+  })
+
   function loadFile(file) {
     if (!api.value) return
     currentTabId = null
@@ -303,7 +314,7 @@ export function useAlphaTab(containerRef) {
     applyTransposition(0)
     api.value.stop()
     sessionStats.value = { totalBeats: 0, successBeats: 0 }
-    lastPitch = 60
+    lastNote = null
     nextOutcome = null
     preRoll(firstBeatOfTrack(playableTrack))
   }
@@ -318,6 +329,7 @@ export function useAlphaTab(containerRef) {
 
   onUnmounted(() => {
     stopVolumeWatch()
+    stopBackingWatch()
     api.value?.destroy()
   })
 
