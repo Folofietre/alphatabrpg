@@ -1,14 +1,36 @@
 {
   "categories": [
     {
-      "id": "firststeps",
-      "label": "First Steps",
-      "description": "Children's tunes to find your fingers.",
+      "id": "beginnerlesson",
+      "label": "Guitar Exercises for Absolute Beginners",
+      "description": "Absolute beginners exercises.",
       "order": 1,
       "unlock": {
         "type": "always"
       },
       "hint": null
+    },
+    {
+      "id": "beginnerlesson2",
+      "label": "Guitar Exercises for Beginners",
+      "description": "Beginners exercises.",
+      "order": 1,
+      "unlock": {
+        "type": "all_completed",
+        "category": "beginnerlesson"
+      },
+      "hint": "Complete every absolute beginner lesson track."
+    },
+    {
+      "id": "firststeps",
+      "label": "Children's tunes",
+      "description": "Children's tunes to find your fingers.",
+      "order": 1,
+      "unlock": {
+        "type": "all_completed",
+        "category": "beginnerlesson2"
+      },
+      "hint": "Complete every beginner lesson track."
     },
     {
       "id": "solopractice",
@@ -19,7 +41,7 @@
         "type": "all_completed",
         "category": "firststeps"
       },
-      "hint": "Complete every First Steps track."
+      "hint": "Complete every Children's tunes track."
     },
     {
       "id": "fingerpicking",
@@ -60,12 +82,69 @@
       "description": "Sit at the firecamp and relax, Stalker.",
       "order": 5,
       "unlock": {
-        "type": "always"
+        "type": "all_completed",
+        "category": "beginnerlesson2"
       },
-      "hint": null
+      "hint": "Complete every beginner lesson track."
     }
   ],
   "tabs": [
+    {
+      "id": "beginnerlesson/9-rhythm-study-1.gp",
+      "category": "beginnerlesson",
+      "artist": "9",
+      "title": "rhythm-study-1",
+      "file": "/alphatabrpg/tabs/beginnerlesson/9-rhythm-study-1.gp"
+    },
+    {
+      "id": "beginnerlesson/11-Rock-rhythm-study.gp",
+      "category": "beginnerlesson",
+      "artist": "11",
+      "title": "Rock-rhythm-study",
+      "file": "/alphatabrpg/tabs/beginnerlesson/11-Rock-rhythm-study.gp"
+    },
+    {
+      "id": "beginnerlesson/12-rock-solo-study.gp",
+      "category": "beginnerlesson",
+      "artist": "12",
+      "title": "rock-solo-study",
+      "file": "/alphatabrpg/tabs/beginnerlesson/12-rock-solo-study.gp"
+    },
+    {
+      "id": "beginnerlesson/10-solo-study-1.gp",
+      "category": "beginnerlesson",
+      "artist": "10",
+      "title": "solo-study-1",
+      "file": "/alphatabrpg/tabs/beginnerlesson/10-solo-study-1.gp"
+    },
+    {
+      "id": "beginnerlesson2/13-acoustic-rhythm-study-1.gp",
+      "category": "beginnerlesson2",
+      "artist": "13",
+      "title": "acoustic-rhythm-study-1",
+      "file": "/alphatabrpg/tabs/beginnerlesson2/13-acoustic-rhythm-study-1.gp"
+    },
+    {
+      "id": "beginnerlesson2/15-acoustic-rhythm-study-2.gp",
+      "category": "beginnerlesson2",
+      "artist": "15",
+      "title": "acoustic-rhythm-study-2",
+      "file": "/alphatabrpg/tabs/beginnerlesson2/15-acoustic-rhythm-study-2.gp"
+    },
+    {
+      "id": "beginnerlesson2/14-acoustic-solo-study-1.gp",
+      "category": "beginnerlesson2",
+      "artist": "14",
+      "title": "acoustic-solo-study-1",
+      "file": "/alphatabrpg/tabs/beginnerlesson2/14-acoustic-solo-study-1.gp"
+    },
+    {
+      "id": "beginnerlesson2/16-acoustic-solo-study-2.gp",
+      "category": "beginnerlesson2",
+      "artist": "16",
+      "title": "acoustic-solo-study-2",
+      "file": "/alphatabrpg/tabs/beginnerlesson2/16-acoustic-solo-study-2.gp"
+    },
     {
       "id": "firststeps/Misc Children - Head Shoulders Knees And Toes.gp5",
       "category": "firststeps",

@@ -1,11 +1,27 @@
 {
   "categories": [
     {
-      "id": "firststeps",
-      "label": "First Steps",
-      "description": "Children's tunes to find your fingers.",
+      "id": "beginnerlesson",
+      "label": "Guitar Exercises for Absolute Beginners",
+      "description": "Absolute beginners exercises.",
       "order": 1,
       "unlock": { "type": "always" }
+    },
+    {
+      "id": "beginnerlesson2",
+      "label": "Guitar Exercises for Beginners",
+      "description": "Beginners exercises.",
+      "order": 1,
+      "unlock": { "type": "all_completed", "category": "beginnerlesson" },
+      "hint": "Complete every absolute beginner lesson track."
+    },
+    {
+      "id": "firststeps",
+      "label": "Children's tunes",
+      "description": "Children's tunes to find your fingers.",
+      "order": 1,
+      "unlock": { "type": "all_completed", "category": "beginnerlesson2" },
+      "hint": "Complete every beginner lesson track."
     },
     {
       "id": "solopractice",
@@ -13,7 +29,7 @@
       "description": "Standalone pieces for a single instrument.",
       "order": 2,
       "unlock": { "type": "all_completed", "category": "firststeps" },
-      "hint": "Complete every First Steps track."
+      "hint": "Complete every Children's tunes track."
     },
     {
       "id": "fingerpicking",
@@ -42,7 +58,8 @@
       "label": "Ukrainian Firecamp",
       "description": "Sit at the firecamp and relax, Stalker.",
       "order": 5,
-      "unlock": { "type": "always" }
+      "unlock": { "type": "all_completed", "category": "beginnerlesson2" },
+      "hint": "Complete every beginner lesson track."
     }
   ]
 }
