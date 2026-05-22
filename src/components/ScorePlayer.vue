@@ -90,13 +90,13 @@ function onReplay() {
 }
 .alphatab-host {
   width: 100%;
-  height: 320px;
+  height: 420px;
   background: var(--bg-surface);
   color: var(--ash-brown);
   border-radius: 0.5rem;
   border: 1px solid var(--panel-border);
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: auto;
 }
 .alphatab-host :deep(.at-surface) {
   color: var(--ash-brown);
