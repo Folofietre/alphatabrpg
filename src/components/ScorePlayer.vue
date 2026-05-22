@@ -68,6 +68,7 @@ function onReplay() {
   clearSessionResult()
   store.resetStamina()
   rewind()
+  playPause()
 }
 </script>
 
