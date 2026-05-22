@@ -131,6 +131,7 @@ function tabsIndexPlugin() {
 }
 
 export default defineConfig({
+  base: '/alphatab-rpg/',
   plugins: [vue(), alphaTab(), tabsIndexPlugin()],
   resolve: {
     alias: {
