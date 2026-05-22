@@ -32,6 +32,22 @@
           @input="onVolumeInput"
         />
       </label>
+
+      <div class="divider" />
+
+      <div class="danger-zone">
+        <span class="zone-label">Danger zone</span>
+        <button
+          type="button"
+          class="danger-btn"
+          :disabled="isPlaying"
+          @click="onResetClick"
+        >
+          Reset character
+        </button>
+        <p v-if="isPlaying" class="zone-hint">Stop the current session first.</p>
+        <p v-else class="zone-hint">Wipes character, stats and history.</p>
+      </div>
     </div>
   </div>
 </template>
@@ -39,8 +55,12 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useSettings } from '@/composables/useSettings'
+import { usePlaybackLock } from '@/composables/usePlaybackLock'
+import { useCharacterStore } from '@/stores/character'
 
 const { volume, setVolume } = useSettings()
+const { isPlaying } = usePlaybackLock()
+const store = useCharacterStore()
 
 const open = ref(false)
 const panel = ref(null)
@@ -51,6 +71,16 @@ function toggle() {
 
 function onVolumeInput(e) {
   setVolume(parseFloat(e.target.value))
+}
+
+function onResetClick() {
+  if (isPlaying.value) return
+  const ok = window.confirm(
+    'Reset character?\n\nAll progress (stats, history, completed sessions) will be lost. This cannot be undone.',
+  )
+  if (!ok) return
+  store.reset()
+  open.value = false
 }
 
 function onDocClick(e) {
@@ -140,5 +170,53 @@ onBeforeUnmount(() => {
 input[type='range'] {
   width: 100%;
   accent-color: var(--palm-leaf);
+}
+.divider {
+  height: 1px;
+  background: var(--panel-border);
+  margin: 0.25rem 0;
+}
+.danger-zone {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.zone-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+  color: var(--faded-copper);
+}
+.zone-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  opacity: 0.75;
+  line-height: 1.35;
+}
+.zone-hint.warn {
+  color: var(--faded-copper);
+  opacity: 1;
+}
+.danger-btn {
+  align-self: flex-start;
+  padding: 0.4rem 0.85rem;
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+  color: var(--faded-copper);
+  border-radius: 0.4rem;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+.danger-btn:hover:not(:disabled) {
+  background: var(--faded-copper);
+  border-color: var(--faded-copper);
+  color: var(--vanilla-cream);
+}
+.danger-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>

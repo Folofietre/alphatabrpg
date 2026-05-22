@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
+import { SUPPORTED_INSTRUMENTS } from '@/utils/instruments'
 
-const SAVE_KEY = 'alphatab_rpg_save_v3'
+const SAVE_KEY = 'alphatab_rpg_save_v4'
+const LEGACY_KEYS = ['alphatab_rpg_save_v3', 'alphatab_rpg_save_v2', 'alphatab_rpg_save']
 
 const SPEED_CAP = 600
 const ENDURANCE_CAP = 500
@@ -13,6 +15,7 @@ const MIN_BEATS_FOR_OUTCOME = 10
 
 const defaultCharacter = () => ({
   name: 'Musician',
+  instrument: '',           // empty until CharacterSetup completes
   speed: SPEED_FLOOR,
   dexterity: DEX_FLOOR,
   endurance: ENDURANCE_FLOOR,
@@ -52,12 +55,47 @@ export const useCharacterStore = defineStore('character', {
 
   actions: {
     load() {
-      const raw = localStorage.getItem(SAVE_KEY)
-      if (raw) {
-        const saved = JSON.parse(raw)
-        this.character = saved.character ?? defaultCharacter()
-        this.history = saved.history ?? []
+      let raw = localStorage.getItem(SAVE_KEY)
+      let migrated = false
+      if (!raw) {
+        // Migrate from the most recent legacy key, if any.
+        for (const key of LEGACY_KEYS) {
+          const legacy = localStorage.getItem(key)
+          if (legacy) {
+            raw = legacy
+            migrated = true
+            break
+          }
+        }
       }
+      if (!raw) return
+
+      const saved = JSON.parse(raw)
+      this.character = { ...defaultCharacter(), ...(saved.character ?? {}) }
+      this.history = saved.history ?? []
+
+      // Migrated saves never had an instrument — they default to piano,
+      // the most permissive class, so the existing player isn't locked out.
+      if (migrated && !this.character.instrument) {
+        this.character.instrument = 'piano'
+      }
+      if (migrated) {
+        this.save()
+        for (const key of LEGACY_KEYS) localStorage.removeItem(key)
+      }
+    },
+
+    createCharacter({ name, instrument }) {
+      if (this.character.instrument) return // already created; locked.
+      if (!SUPPORTED_INSTRUMENTS.includes(instrument)) return
+      this.character = {
+        ...defaultCharacter(),
+        name: (name ?? '').trim() || 'Musician',
+        instrument,
+      }
+      this.notesPlayed = 0
+      this.history = []
+      this.save()
     },
 
     save() {

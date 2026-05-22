@@ -17,7 +17,10 @@
           :title="isPlaying ? 'Stop the current session first' : ''"
           @click="onPick(tab)"
         >
-          <span class="title">{{ tab.title }}</span>
+          <div class="row-top">
+            <span class="title">{{ tab.title }}</span>
+            <DifficultyStars :info="difficulty.get(tab.id)" />
+          </div>
           <span class="artist">{{ tab.artist }}</span>
         </button>
       </li>
@@ -32,9 +35,14 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useTabSelection } from '@/composables/useTabSelection'
 import { usePlaybackLock } from '@/composables/usePlaybackLock'
+import { useTabDifficulty } from '@/composables/useTabDifficulty'
+import { useCharacterStore } from '@/stores/character'
+import DifficultyStars from './DifficultyStars.vue'
 
 const { selectTab, pendingScore } = useTabSelection()
 const { isPlaying } = usePlaybackLock()
+const difficulty = useTabDifficulty()
+const store = useCharacterStore()
 
 const tabs = ref([])
 const selectedId = ref(null)
@@ -62,6 +70,10 @@ onMounted(async () => {
     const res = await fetch('/tabs/index.json', { cache: 'no-store' })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     tabs.value = await res.json()
+    // Kick off background difficulty analysis for each tab.
+    for (const tab of tabs.value) {
+      difficulty.ensure(tab, store.character.instrument)
+    }
   } catch (e) {
     error.value = true
     console.error('Failed to load tab manifest:', e)
@@ -135,9 +147,18 @@ onMounted(async () => {
   opacity: 0.45;
   cursor: not-allowed;
 }
+.row-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  width: 100%;
+}
 .title {
   font-weight: 600;
   font-size: 0.95rem;
+  flex: 1;
+  min-width: 0;
 }
 .artist {
   font-size: 0.8rem;

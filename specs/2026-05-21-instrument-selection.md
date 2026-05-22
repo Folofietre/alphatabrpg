@@ -1,15 +1,21 @@
-# Plan — Instrument-aware character & track auto-selection
+# Plan — Instrument-aware character & track auto-selection (Phase 1)
 
 > Status: draft / future work
 > Date: 2026-05-21
+> Scope: Guitar, Bass, Piano. **Drums are tracked separately** — see [2026-05-21-drums-support.md](./2026-05-21-drums-support.md).
 
 ## Goal
 
-At character creation, the player picks an instrument (Guitar, Bass, Drums). 
-When a score is loaded, the renderer/player automatically targets the track that matches the character's instrument. 
-If no track matches, the score doesnt appear for this player.
+At character creation, the player picks an instrument: **Guitar**, **Bass**, or **Piano**. The choice is **permanent for that character** — switching will come later as a "Prestige" mechanic (out of scope here).
 
-This deepens the gameplay loop (a guitarist can't grind drum charts) and naturally limits each character's repertoire.
+When a score is loaded, alphaTab renders the track matching the player's instrument. Scores with no compatible track are **hidden from the TabLibrary entirely** (no fallback picker, no "play anyway").
+
+### Design intent
+
+- **Piano = the classic, accessible experience.** Piano players see the broadest repertoire because they can also play guitar tracks when no piano track is present.
+- **Guitar and Bass = thematic flavor.** They only play their own track family. No numeric bonus or penalty — the constraint is the flavor.
+
+This trades a bit of grindability (a bassist sees fewer scores than a pianist) for character identity.
 
 ---
 
@@ -19,116 +25,148 @@ Each `Track` exposes:
 
 - `track.playbackInfo.program` — MIDI GM program 0–127
 - `track.playbackInfo.primaryChannel` — MIDI channel (9 = drums in GM)
-- `track.isPercussion` — derived flag (true for drum tracks)
+- `track.isPercussion` — derived flag
 
-MIDI program ranges for our mapping:
+MIDI program detection table for Phase 1:
 
 | Instrument | Detection |
 |---|---|
+| Piano | `program` in 0..7 (Acoustic Grand → Clavinet, GM piano family) |
 | Guitar | `program` in 24..31 |
 | Bass | `program` in 32..39 |
-| Drums | `isPercussion === true` (channel 9) |
 
-Heuristic fallback for badly tagged scores: inspect `track.staves[*]` for TAB presence and note range.
-
-PIANO : search if we can determine if a track is the piano, else its a clone of guitar. They both can play each other parts. Guitar can also play piano tracks.
+Heuristic fallback for badly tagged scores: inspect `track.staves[*]` for TAB presence and note range. Probably not needed for v1 — accept that ill-tagged scores won't appear and tell the user to fix their tags.
 
 ---
 
-## Phased delivery
+## Track matching rules
 
-### Phase 1 — Guitar + Bass only (no Drums)
+| Player instrument | Tracks accepted | Fallback |
+|---|---|---|
+| Guitar | first guitar track | none |
+| Bass | first bass track | none |
+| Piano | first piano track | first guitar track (if no piano) |
 
-Scope: enough to make the instrument choice meaningful without rewriting the scoring engine.
+If no rule matches, the score is invisible to that character.
 
-#### Data model
+---
+
+## Data model
 
 - Save schema bumped to `alphatab_rpg_save_v4`.
-- `character.instrument: 'guitar' | 'bass'` (default `'guitar'` on migration).
-
-#### Files
-
-- `src/stores/character.js`
-  - Add `instrument` to `defaultCharacter()`.
-  - Migration: if loading a v3 save, force `instrument = 'guitar'`.
-  - Action `setInstrument(instrument)`.
-- `src/utils/instruments.js` (new)
-  - `INSTRUMENT_RANGES = { guitar: [24, 31], bass: [32, 39] }`
-  - `instrumentOf(track)` → `'guitar' | 'bass' | 'drums' | 'other'`
-  - `findTrackForInstrument(score, instrument)` → `Track | null`
-- `src/composables/useAlphaTab.js`
-  - In `scoreLoaded`: call `findTrackForInstrument(score, store.character.instrument)`.
-  - If match: `api.renderTracks([match])` before the existing solo/mute logic, so renderTracks triggers a re-render with that track and only that track is audible.
-  - If no match: expose `pendingFallback: ref({ tracks: candidates })` and pause auto-play, let the UI prompt the user.
-- `src/components/CharacterStats.vue`
-  - Show current instrument next to the name (clickable label).
-  - User can only play track of its instrument
-
-#### UI flow
-
-1. Cold start (no save): a `CharacterSetup.vue` screen asks for a name + instrument (each instrument is linked to a pic in public/avatar, used as an avatar, showed under the instrument selector) before showing the main UI. After setup, save is created and the normal app is mounted.
-Avatar is shown (small) next to the player name + instrument icon (in public/icons)
-2. Score load with matching track: silent auto-select, normal session.
-3. From CharacterStats, the user can change instrument at any time (between sessions only — disabled while `usePlaybackLock.isPlaying` is true).
-
-#### Edge cases
-
-- Multi-guitar scores (rhythm + lead): pick the first match.
-- Score where the chosen instrument is misregistered (e.g., bass on program 0): the fallback `TrackPicker` covers it.
-- Piano and guitar can play each other scores.
-- Single-track piano score (the current Mary Had A Little Lamb situation): match piano, playable as well by guitar.
-- Single-track guitar score (the current Rivers Flows in You situation): match guitar, playable as well by piano.
+- `character.instrument: 'guitar' | 'bass' | 'piano'` — set at creation, **never changed afterwards** (no setter exposed by the store).
+- Migration v3 → v4: default to `'piano'` (most permissive, lowest user surprise).
 
 ---
 
-### Phase 2 — Drums
+## Files
 
-Drums break the current scoring engine because there is no pitch/interval semantics — every drum "note" is a pad hit on a fixed MIDI note (kick = 36, snare = 38, etc.).
+### `src/stores/character.js`
+- Add `instrument` and `avatar` (derived from instrument, e.g. `'piano.png'`) to `defaultCharacter()`.
+- New action `createCharacter({ name, instrument })` — only callable when `instrument` is still empty.
+- **No `setInstrument` action.** Locked after creation.
+- Migration: if v3 save detected, force `instrument = 'piano'` on the first v4 load.
 
-#### Scoring rework for drums
+### `src/utils/instruments.js` (new)
+```js
+export const INSTRUMENT_RANGES = {
+  piano:  [0, 7],
+  guitar: [24, 31],
+  bass:   [32, 39],
+}
 
-- **Dexterity**: roll based on (a) simultaneous hits per beat (more pads = harder), (b) shortest gap to the previous beat (fast 16th notes = harder). Pitch interval factor → replaced by a "limb-spread" factor counting unique drum groups hit (kick/snare/hat/tom/cymbal).
-- **Endurance**: same `beatExhaustion` shape, but interval-factor swapped for limb-spread-factor.
-- **Speed**: unchanged, since onset rate computation already only counts beat onsets, not pitch.
+export function instrumentOf(track) { /* 'piano' | 'guitar' | 'bass' | 'drums' | 'other' */ }
 
-#### Files
+export function findPlayableTrack(score, playerInstrument) {
+  // Returns the Track to render, or null.
+  // - guitar → first guitar track
+  // - bass   → first bass track
+  // - piano  → first piano track, else first guitar track
+}
 
-- `src/utils/rpgEngine.js`
-  - Add `rollBeatAccuracyDrums()` and `beatExhaustionDrums()` variants.
-  - Dispatch from a single entry point `rollBeat(dexterity, beat, ctx, mode)` where `mode` is derived from `character.instrument`.
-- `src/utils/drumKit.js` (new)
-  - Map MIDI percussion notes to drum groups (`'kick'`, `'snare'`, `'hat'`, `'tom'`, `'cymbal'`, `'other'`).
+export function scoreIsPlayable(score, playerInstrument) {
+  return findPlayableTrack(score, playerInstrument) !== null
+}
+```
 
-#### UI
+### `src/composables/useAlphaTab.js`
+- In `scoreLoaded`: call `findPlayableTrack(score, store.character.instrument)`.
+- If null (shouldn't happen if the library filtered correctly, but guard for direct file drops): abort, surface an error message via a new ref `loadError`.
+- If match: `api.renderTracks([track])`, then keep the existing `changeTrackSolo` / `changeTrackMute` logic for audio cleanup.
 
-- Add Drums option to `CharacterSetup` and CharacterStats picker.
-- `analyzeScore` (currently unused) can surface "drum density" if we want to add a difficulty badge per built-in tab.
+### `src/components/CharacterSetup.vue` (new)
+- Full-page (or modal) shown when `character.instrument` is empty (cold start).
+- Form:
+  - Name input
+  - Three instrument cards — name, icon from `public/icons/{piano,guitar,bass}.svg`, large preview avatar from `public/avatars/{piano,guitar,bass}.png`.
+  - Selected card's avatar shown larger underneath the picker.
+- Submit → `store.createCharacter({ name, instrument })` → screen disappears, main UI mounts.
+
+### `src/components/CharacterStats.vue`
+- Show avatar (small, ~32px) + instrument icon next to the name.
+- **No picker, no edit affordance.** The instrument is locked.
+- Stats unchanged.
+
+### `src/components/TabLibrary.vue`
+- Filter the fetched manifest: only show tabs where `scoreIsPlayable` returns true.
+- **Challenge**: requires inspecting each tab to know its tracks. Two paths:
+  - **Build-time scan (best)**: extend the Vite plugin to parse each tab (alphaTab is browser-only, so we'd need an alternative parser or evaluate via jsdom). Annotate each manifest entry with `availableInstruments: ['piano', 'guitar']`. The library filters off that field client-side.
+  - **Pragmatic fallback for v1**: keep all tabs visible in the library. The filtering happens lazily in `useAlphaTab.scoreLoaded`. If the loaded score isn't playable, surface a clear "no <instrument> track in this score" message and refuse to play. Less elegant but works without infra changes.
+
+Pick the build-time scan only if the parsing is straightforward. Otherwise ship the pragmatic fallback and revisit later.
+
+### Assets
+
+- `public/avatars/{piano,guitar,bass}.png` — character portraits used in CharacterSetup and (small) in CharacterStats. ~256x256 source, rendered at multiple sizes via CSS.
+- `public/icons/{piano,guitar,bass}.svg` — small monochrome icons (in palm-leaf or ash-brown). Used inline with text.
 
 ---
 
-### Phase 3 — Optional polish - OUT OF SCOPE
+## Cold start flow
 
-Only worth doing if the game has staying power.
+1. `App.vue` mounts → `store.load()`.
+2. If `character.instrument` is empty → render `CharacterSetup.vue` only.
+3. User enters name + picks instrument → `store.createCharacter(...)`.
+4. `CharacterSetup` hides, main UI mounts normally.
 
-- **One character per instrument**: `state.characters = { guitar, bass, drums }`, save tracks each independently. Switch instrument = switch character. Adds a "main menu" with per-instrument progression. Significantly more UI.
-- **Cross-instrument XP transfer**: small percentage of XP gained on one instrument trickles to others (5%). Discourages siloing.
-- **Track auto-pick heuristic refinement**: when multiple matches, score them by note count, range, and `playbackInfo.volume` to prefer the "lead" track.
-- **Built-in tab metadata**: instead of guessing instrument from the file alone, the Vite plugin could pre-scan tabs at build time and annotate each entry in `tabs/index.json` with `availableInstruments: ['guitar', 'bass']`. Lets the TabLibrary grey out scores incompatible with the current character.
+If the save already has an instrument, the setup is skipped — straight to main UI.
+
+---
+
+## Edge cases
+
+- **Multi-guitar score**: pick the first guitar track. No UI to override (Phase 3 might add it).
+- **Score with multiple piano tracks**: same — first piano track wins.
+- **Score with only bass + drums** for a guitar player: hidden from library.
+- **Single-track piano score** (Mary Had A Little Lamb in some encodings): piano character → matches; guitar character → hidden; bass character → hidden.
+- **Single-track guitar score** (River Flows In You): guitar character → matches; piano character → falls back to guitar track; bass character → hidden.
+- **Custom file drop with no playable track**: shows the "no <instrument> track" message instead of loading. User can drop another file.
+
+---
+
+## Out of scope here (future plans)
+
+- **Prestige mechanic**: reset character at cap, choose a new instrument, optionally carry a small permanent bonus across runs. Separate plan when relevant.
+- **Multi-character slots**: one save per instrument. Significantly more UI; do not bake in v1.
+- **Cross-instrument XP transfer**: not relevant until prestige exists.
+- **Build-time tab metadata pre-scan**: covered above as a "best path" for the TabLibrary filter. If not done at build, lives as deferred infra work.
+- **Drums**: see [2026-05-21-drums-support.md](./2026-05-21-drums-support.md). Different scoring engine, different chart semantics, no shared codepath beyond the instrument selector.
 
 ---
 
 ## Open questions to resolve before coding
 
-1. **Permissive or strict on no-match?** Phase 1 plan above is permissive (always allow override). Strict variant: no override possible, user must pick a compatible score. Affects how "useless" the player feels with a wrong instrument.
-2. **Drums tracking semantics**: is hitting all 3 pads of a beat a single "success" or 3 independent rolls? Current single-roll architecture suggests one success.
-3. **Migration policy**: should v3 → v4 silently default to `'guitar'` or force the player through `CharacterSetup` to pick? Either way is reasonable.
+1. **TabLibrary filter strategy**: build-time scan (best UX) vs. lazy filter on load (simpler infra). Recommend: ship lazy filter, revisit build-time scan if the unfiltered library becomes annoying.
+2. **Migration policy v3 → v4**: silently default to piano, or force the existing player through CharacterSetup (treating the existing save as orphan stats)? Defaulting to piano is the least disruptive.
+3. **Avatars**: where do the assets come from? Need to source/draw 3 character portraits before this phase can ship UX-complete.
 
 ---
 
 ## Effort estimate
 
-- Phase 1: ~one evening (4–6h) for the essentials, +half-day for `TrackPicker` polish.
-- Phase 2: ~one day, dominated by drum scoring rework and play-testing.
-- Phase 3: as much as you want to invest.
+- **Core (instruments.js + character store + useAlphaTab integration + CharacterSetup)**: ~half a day.
+- **Lazy-filter TabLibrary path**: included above.
+- **Build-time pre-scan**: extra half-day, depending on parser availability.
+- **Assets (avatars + icons)**: depends on artwork pipeline.
 
-Phase 1 delivers most of the gameplay impact; everything after is iteration.
+Phase 1 ships meaningful identity to characters without touching the scoring engine. Drums and prestige come later as independent plans.

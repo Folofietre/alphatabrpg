@@ -14,15 +14,16 @@ function beatOnsetRate(beat, bpm) {
 }
 
 // 95th percentile of onset rates across beats with notes. Used to derive the
-// playback multiplier given the character's Speed stat.
-export function scoreOnsetRate(score) {
+// playback multiplier given the character's Speed stat. When `track` is not
+// provided, falls back to the first track of the score.
+export function scoreOnsetRate(score, track = null) {
   if (!score) return 120
-  const track = score.tracks?.[0]
-  if (!track) return 120
+  const t = track ?? score.tracks?.[0]
+  if (!t) return 120
   const bpm = score.tempo ?? 120
 
   const rates = []
-  for (const staff of track.staves ?? []) {
+  for (const staff of t.staves ?? []) {
     for (const bar of staff.bars ?? []) {
       for (const voice of bar.voices ?? []) {
         for (const beat of voice.beats ?? []) {
@@ -91,17 +92,19 @@ export function beatExhaustion(beat, prevPitch = 60, effectiveBpm = 120) {
   return speedFactor * intervalFactor * chordFactor
 }
 
-export function analyzeScore(score) {
+// Heuristic 0..1 difficulty for a score, optionally scoped to a specific track.
+// Considers tempo, biggest pitch interval, and total note count.
+export function analyzeScore(score, track = null) {
   if (!score) return { estimatedDifficulty: 0.5, noteCount: 0, avgBpm: 120 }
 
-  const track = score.tracks?.[0]
-  if (!track) return { estimatedDifficulty: 0.5, noteCount: 0, avgBpm: 120 }
+  const t = track ?? score.tracks?.[0]
+  if (!t) return { estimatedDifficulty: 0.5, noteCount: 0, avgBpm: 120 }
 
   let noteCount = 0
   let maxInterval = 0
   let prevPitch = 60
 
-  for (const staff of track.staves ?? []) {
+  for (const staff of t.staves ?? []) {
     for (const bar of staff.bars ?? []) {
       for (const voice of bar.voices ?? []) {
         for (const beat of voice.beats ?? []) {

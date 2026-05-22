@@ -3,6 +3,7 @@ import * as alphaTab from '@coderline/alphatab'
 import { useCharacterStore } from '@/stores/character'
 import { useSettings } from '@/composables/useSettings'
 import { rollBeatAccuracy, beatExhaustion, scoreOnsetRate } from '@/utils/rpgEngine'
+import { findPlayableTrack, INSTRUMENT_META } from '@/utils/instruments'
 
 export function useAlphaTab(containerRef) {
   const store = useCharacterStore()
@@ -12,6 +13,8 @@ export function useAlphaTab(containerRef) {
   const isPlaying = ref(false)
   const sessionStats = ref({ totalBeats: 0, successBeats: 0 })
   const sessionResult = ref(null)
+  const loadError = ref(null)
+  let playableTrack = null
 
   let currentTransposition = 0
   let nextOutcome = null    // outcome decided for the *next* beat to be played
@@ -40,8 +43,8 @@ export function useAlphaTab(containerRef) {
     applyTransposition(roll.success ? 0 : roll.semitones)
   }
 
-  function firstBeatOf(score) {
-    return score?.tracks?.[0]?.staves?.[0]?.bars?.[0]?.voices?.[0]?.beats?.[0] ?? null
+  function firstBeatOfTrack(track) {
+    return track?.staves?.[0]?.bars?.[0]?.voices?.[0]?.beats?.[0] ?? null
   }
 
   function endSession(outcome) {
@@ -95,18 +98,37 @@ export function useAlphaTab(containerRef) {
     api.value.masterVolume = volume.value
 
     api.value.scoreLoaded.on(() => {
-      // Single-track game: solo the rendered (first) track and mute the rest
-      // so only the displayed instrument is audible.
       const score = api.value.score
-      if (score?.tracks?.length > 1) {
-        api.value.changeTrackMute(score.tracks.slice(1), true)
+      const instrument = store.character.instrument
+      const match = findPlayableTrack(score, instrument)
+
+      if (!match) {
+        const label = INSTRUMENT_META[instrument]?.label ?? instrument
+        loadError.value = `No ${label} track in this score.`
+        isReady.value = false
+        api.value.stop()
+        return
       }
-      if (api.value.tracks?.length) {
-        api.value.changeTrackSolo(api.value.tracks, true)
+      loadError.value = null
+      playableTrack = match
+
+      // Switch the renderer to the matched track if alphaTab defaulted to a
+      // different one. This triggers a re-render of just that track.
+      const alreadyRendered = api.value.tracks?.length === 1 && api.value.tracks[0] === match
+      if (!alreadyRendered) {
+        api.value.renderTracks([match])
       }
 
-      // Derive playback tempo from character Speed vs the score's onset rate (P95).
-      const onsetRate = scoreOnsetRate(score)
+      // Mute every non-matched track for audio cleanup.
+      const others = (score?.tracks ?? []).filter(t => t !== match)
+      if (others.length) {
+        api.value.changeTrackMute(others, true)
+      }
+      api.value.changeTrackSolo([match], true)
+
+      // Derive playback tempo from character Speed vs the score's onset rate (P95)
+      // computed on the matched track only.
+      const onsetRate = scoreOnsetRate(score, match)
       playbackMultiplier = Math.min(1, store.character.speed / Math.max(1, onsetRate))
       api.value.playbackSpeed = playbackMultiplier
       api.value.masterVolume = volume.value
@@ -119,7 +141,7 @@ export function useAlphaTab(containerRef) {
       store.resetStamina()
       // Pre-roll for the very first beat so the wrong pitch is already set
       // when audio begins.
-      preRoll(firstBeatOf(api.value.score))
+      preRoll(firstBeatOfTrack(match))
     })
 
     api.value.playedBeatChanged.on((beat) => {
@@ -182,7 +204,11 @@ export function useAlphaTab(containerRef) {
     sessionStats.value = { totalBeats: 0, successBeats: 0 }
     lastPitch = 60
     nextOutcome = null
-    preRoll(firstBeatOf(api.value.score))
+    preRoll(firstBeatOfTrack(playableTrack))
+  }
+
+  function clearLoadError() {
+    loadError.value = null
   }
 
   function clearSessionResult() {
@@ -202,9 +228,11 @@ export function useAlphaTab(containerRef) {
     stop,
     rewind,
     clearSessionResult,
+    clearLoadError,
     isReady,
     isPlaying,
     sessionStats,
     sessionResult,
+    loadError,
   }
 }

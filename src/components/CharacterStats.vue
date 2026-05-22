@@ -1,6 +1,19 @@
 <template>
   <section class="stats">
-    <h2>{{ store.character.name }}</h2>
+    <header class="identity">
+      <img
+        v-if="instrumentMeta?.avatar"
+        :src="instrumentMeta.avatar"
+        :alt="`${instrumentMeta.label} portrait`"
+        :title="instrumentMeta.label"
+        class="avatar"
+        draggable="false"
+      />
+      <div>
+        <h2>{{ store.character.name }}</h2>
+        <p v-if="instrumentMeta" class="role">{{ instrumentMeta.label }}</p>
+      </div>
+    </header>
     <div v-for="stat in stats" :key="stat.key" class="stat">
       <label>{{ stat.label }}</label>
       <div class="bar">
@@ -14,11 +27,13 @@
 <script setup>
 import { computed } from 'vue'
 import { useCharacterStore } from '@/stores/character'
+import { INSTRUMENT_META } from '@/utils/instruments'
 
 const SPEED_CAP = 600
 const ENDURANCE_CAP = 500
 
 const store = useCharacterStore()
+const instrumentMeta = computed(() => INSTRUMENT_META[store.character.instrument] ?? null)
 
 const stats = computed(() => [
   {
@@ -53,8 +68,32 @@ const stats = computed(() => [
   border: 1px solid var(--panel-border);
 }
 .stats h2 {
-  margin: 0 0 0.25rem;
+  margin: 0;
   font-size: 1.1rem;
+}
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+.avatar {
+  width: 48px;
+  height: 62px;
+  border-radius: none;
+  object-fit: cover;
+  background: var(--bg-surface);
+  border: 1px solid var(--panel-border);
+  user-select: none;
+  -webkit-user-drag: none;
+  flex-shrink: 0;
+}
+.role {
+  margin: 0;
+  font-size: 0.8rem;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 .stat {
   display: grid;

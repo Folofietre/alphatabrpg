@@ -1,5 +1,6 @@
 <template>
-  <main class="app">
+  <CharacterSetup v-if="!hasCharacter" />
+  <main v-else class="app">
     <header>
       <SettingsMenu />
       <h1>AlphaTab RPG</h1>
@@ -19,16 +20,19 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { computed } from 'vue'
 import { useCharacterStore } from '@/stores/character'
 import CharacterStats from '@/components/CharacterStats.vue'
 import ScorePlayer from '@/components/ScorePlayer.vue'
 import SettingsMenu from '@/components/SettingsMenu.vue'
 import TabLibrary from '@/components/TabLibrary.vue'
 import CustomScore from '@/components/CustomScore.vue'
+import CharacterSetup from '@/components/CharacterSetup.vue'
 
 const store = useCharacterStore()
-onMounted(() => store.load())
+store.load() // synchronous: read localStorage before first render to avoid flash
+
+const hasCharacter = computed(() => !!store.character.instrument)
 </script>
 
 <style scoped>

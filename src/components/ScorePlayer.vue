@@ -2,6 +2,8 @@
   <section class="score-player">
     <div ref="playerContainer" class="alphatab-host" />
 
+    <p v-if="loadError" class="load-error">{{ loadError }}</p>
+
     <div v-if="isReady && !sessionResult" class="controls">
       <button @click="playPause">{{ isPlaying ? 'Pause' : 'Play' }}</button>
       <button @click="stop" :disabled="!isPlaying">Stop</button>
@@ -39,9 +41,11 @@ const {
   stop,
   rewind,
   clearSessionResult,
+  clearLoadError,
   isReady,
   isPlaying,
   sessionResult,
+  loadError,
 } = useAlphaTab(playerContainer)
 
 const { pendingScore } = useTabSelection()
@@ -55,6 +59,7 @@ watch(pendingScore, (score) => {
   if (!score) return
   if (isPlaying.value) return // locked: can't switch while playing
   clearSessionResult()
+  clearLoadError()
   if (score.kind === 'url') loadUrl(score.url)
   else if (score.kind === 'file') loadFile(score.file)
 })
@@ -120,5 +125,14 @@ function onReplay() {
   font-variant-numeric: tabular-nums;
   font-size: 0.85rem;
   opacity: 0.8;
+}
+.load-error {
+  margin: 0;
+  padding: 0.6rem 0.85rem;
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+  border-radius: 0.4rem;
+  color: var(--ash-brown);
+  font-size: 0.9rem;
 }
 </style>
