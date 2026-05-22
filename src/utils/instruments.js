@@ -11,30 +11,32 @@ export const SUPPORTED_INSTRUMENTS = ['piano', 'guitar', 'bass']
 // shown but cannot be selected.
 export const PICKER_INSTRUMENTS = ['piano', 'guitar', 'bass', 'drums']
 
+const BASE = import.meta.env.BASE_URL
+
 export const INSTRUMENT_META = {
   piano: {
     label: 'Piano',
     symbol: '🎹',
     tagline: 'Classic experience — can also play guitar tracks.',
-    avatar: '/avatar/piano.png',
+    avatar: `${BASE}avatar/piano.png`,
   },
   guitar: {
     label: 'Guitar',
     symbol: '🎸',
     tagline: 'Plays guitar tracks only.',
-    avatar: '/avatar/guitar.png',
+    avatar: `${BASE}avatar/guitar.png`,
   },
   bass: {
     label: 'Bass',
     symbol: '🪕',
     tagline: 'Plays bass tracks only.',
-    avatar: '/avatar/bass.png',
+    avatar: `${BASE}avatar/bass.png`,
   },
   drums: {
     label: 'Drummer',
     symbol: '🥁',
     tagline: 'Coming in a future update.',
-    avatar: '/avatar/drums.png',
+    avatar: `${BASE}avatar/drums.png`,
     disabled: true,
   },
 }
