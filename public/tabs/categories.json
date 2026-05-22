@@ -48,7 +48,7 @@
         "type": "any_of",
         "rules": [
           { "type": "all_completed", "category": "solopractice" },
-          { "type": "stat_threshold", "stat": "dexterity", "min": 0.5 }
+          { "type": "stat_threshold", "stat": "dexterity", "min": 0.8 }
         ]
       },
       "hint": "Complete every Solo Practice track, or reach 50% Dexterity."
@@ -58,8 +58,8 @@
       "label": "Classic Songs",
       "description": "The crowd-pleasers.",
       "order": 4,
-      "unlock": { "type": "stat_threshold", "stat": "endurance", "min": 100 },
-      "hint": "Reach 100 Endurance."
+      "unlock": { "type": "stat_threshold", "stat": "endurance", "min": 300 },
+      "hint": "Reach 300 Endurance."
     },
     {
       "id": "ukrainianfirecamp",
