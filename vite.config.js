@@ -36,10 +36,26 @@ function parseFilename(filename) {
   return { artist: 'Unknown', title: base }
 }
 
-async function buildTabsManifest(tabsDir) {
+async function readCategoriesConfig(tabsDir) {
+  const configPath = path.join(tabsDir, 'categories.json')
+  try {
+    const raw = await fs.readFile(configPath, 'utf-8')
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed.categories)) return null
+    return parsed.categories
+  } catch (err) {
+    if (err.code !== 'ENOENT') {
+      console.warn('[tabs-index] Failed to read categories.json:', err.message)
+    }
+    return null
+  }
+}
+
+async function listTabsInCategory(tabsDir, categoryId) {
+  const categoryDir = path.join(tabsDir, categoryId)
   let entries
   try {
-    entries = await fs.readdir(tabsDir, { withFileTypes: true })
+    entries = await fs.readdir(categoryDir, { withFileTypes: true })
   } catch {
     return []
   }
@@ -48,13 +64,43 @@ async function buildTabsManifest(tabsDir) {
     .map((e) => {
       const { artist, title } = parseFilename(e.name)
       return {
-        id: e.name,
+        id: `${categoryId}/${e.name}`,
+        category: categoryId,
         artist,
         title,
-        file: `/tabs/${encodeURIComponent(e.name)}`,
+        file: `/tabs/${encodeURIComponent(categoryId)}/${encodeURIComponent(e.name)}`,
       }
     })
     .sort((a, b) => a.title.localeCompare(b.title))
+}
+
+async function buildTabsManifest(tabsDir) {
+  const categories = await readCategoriesConfig(tabsDir)
+  if (!categories) {
+    console.warn('[tabs-index] No categories.json at the root of public/tabs/. Manifest will be empty.')
+    return { categories: [], tabs: [] }
+  }
+
+  const sortedCategories = [...categories].sort(
+    (a, b) => (a.order ?? 0) - (b.order ?? 0),
+  )
+
+  const tabs = []
+  const normalizedCategories = []
+  for (const cat of sortedCategories) {
+    const catTabs = await listTabsInCategory(tabsDir, cat.id)
+    tabs.push(...catTabs)
+    normalizedCategories.push({
+      id: cat.id,
+      label: cat.label ?? cat.id,
+      description: cat.description ?? '',
+      order: cat.order ?? 0,
+      unlock: cat.unlock ?? { type: 'always' },
+      hint: cat.hint ?? null,
+    })
+  }
+
+  return { categories: normalizedCategories, tabs }
 }
 
 function tabsIndexPlugin() {
@@ -64,21 +110,21 @@ function tabsIndexPlugin() {
     configureServer(server) {
       server.middlewares.use('/tabs/index.json', async (req, res, next) => {
         try {
-          const tabs = await buildTabsManifest(tabsDir)
+          const manifest = await buildTabsManifest(tabsDir)
           res.setHeader('Content-Type', 'application/json')
           res.setHeader('Cache-Control', 'no-store')
-          res.end(JSON.stringify(tabs))
+          res.end(JSON.stringify(manifest))
         } catch (err) {
           next(err)
         }
       })
     },
     async generateBundle() {
-      const tabs = await buildTabsManifest(tabsDir)
+      const manifest = await buildTabsManifest(tabsDir)
       this.emitFile({
         type: 'asset',
         fileName: 'tabs/index.json',
-        source: JSON.stringify(tabs, null, 2),
+        source: JSON.stringify(manifest, null, 2),
       })
     },
   }

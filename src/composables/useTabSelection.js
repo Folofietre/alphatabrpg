@@ -7,6 +7,7 @@ export function useTabSelection() {
     pendingScore.value = {
       kind: 'url',
       url: tab.file,
+      tabId: tab.id,
       label: tab.title,
       requestedAt: Date.now(),
     }

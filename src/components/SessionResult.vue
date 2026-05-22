@@ -24,6 +24,9 @@
 
     <template v-else>
       <h4>{{ anyGain ? 'Gains & losses' : 'No changes' }}</h4>
+      <p v-if="result.bonusMultiplier" class="bonus-line">
+        Streak bonus: ×{{ result.bonusMultiplier.toFixed(2) }} applied to positive gains.
+      </p>
       <ul class="gains">
         <li>
           Speed
@@ -46,7 +49,7 @@
       </ul>
     </template>
 
-    <button class="replay" @click="$emit('replay')">Replay</button>
+    <button class="replay" @click="$emit('replay')">{{ replayLabel }}</button>
   </div>
 </template>
 
@@ -58,8 +61,16 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+  playlistLength: {
+    type: Number,
+    default: 0,
+  },
 })
 defineEmits(['replay'])
+
+const replayLabel = computed(() =>
+  props.playlistLength > 1 ? 'Replay playlist' : 'Replay',
+)
 
 const HEADLINES = {
   completed: 'Session complete',
@@ -161,6 +172,11 @@ function signClass(v) {
 }
 .gain-neutral {
   opacity: 0.6;
+}
+.bonus-line {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--palm-leaf);
 }
 .replay {
   align-self: flex-start;

@@ -18,17 +18,19 @@
     <SessionResult
       v-if="sessionResult"
       :result="sessionResult"
+      :playlist-length="playlistLength"
       @replay="onReplay"
     />
   </section>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useAlphaTab } from '@/composables/useAlphaTab'
 import { useCharacterStore } from '@/stores/character'
 import { useTabSelection } from '@/composables/useTabSelection'
 import { usePlaybackLock } from '@/composables/usePlaybackLock'
+import { usePlaylist } from '@/composables/usePlaylist'
 import SessionResult from './SessionResult.vue'
 
 const playerContainer = ref(null)
@@ -50,6 +52,8 @@ const {
 
 const { pendingScore } = useTabSelection()
 const { setPlaying } = usePlaybackLock()
+const playlist = usePlaylist()
+const playlistLength = computed(() => playlist.length.value)
 
 onMounted(() => init())
 
@@ -60,15 +64,21 @@ watch(pendingScore, (score) => {
   if (isPlaying.value) return // locked: can't switch while playing
   clearSessionResult()
   clearLoadError()
-  if (score.kind === 'url') loadUrl(score.url)
+  if (score.kind === 'url') loadUrl(score.url, score.tabId ?? null)
   else if (score.kind === 'file') loadFile(score.file)
 })
 
 function onReplay() {
   clearSessionResult()
   store.resetStamina()
-  rewind()
-  playPause()
+  if (playlistLength.value > 1) {
+    // Multi-song run: restart playlist from the top. restart() calls
+    // selectTab → pendingScore fires → loadUrl runs → scoreLoaded auto-plays.
+    playlist.restart()
+  } else {
+    rewind()
+    playPause()
+  }
 }
 </script>
 

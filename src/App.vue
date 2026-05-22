@@ -7,11 +7,14 @@
       <div class="spacer" />
     </header>
     <div class="body">
+      <aside class="left">
+        <PlaylistColumn />
+      </aside>
       <div class="main">
         <CharacterStats />
         <ScorePlayer />
       </div>
-      <aside class="sidebar">
+      <aside class="right">
         <CustomScore />
         <TabLibrary />
       </aside>
@@ -28,6 +31,7 @@ import SettingsMenu from '@/components/SettingsMenu.vue'
 import TabLibrary from '@/components/TabLibrary.vue'
 import CustomScore from '@/components/CustomScore.vue'
 import CharacterSetup from '@/components/CharacterSetup.vue'
+import PlaylistColumn from '@/components/PlaylistColumn.vue'
 
 const store = useCharacterStore()
 store.load() // synchronous: read localStorage before first render to avoid flash
@@ -60,7 +64,7 @@ header h1 {
 }
 .body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 280px;
+  grid-template-columns: 240px minmax(0, 1fr) 280px;
   gap: 1.25rem;
   align-items: start;
 }
@@ -70,13 +74,14 @@ header h1 {
   gap: 1.25rem;
   min-width: 0;
 }
-.sidebar {
+.left,
+.right {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
   min-width: 0;
 }
-@media (max-width: 880px) {
+@media (max-width: 1100px) {
   .body {
     grid-template-columns: 1fr;
   }

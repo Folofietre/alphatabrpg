@@ -1,0 +1,48 @@
+{
+  "categories": [
+    {
+      "id": "firststeps",
+      "label": "First Steps",
+      "description": "Children's tunes to find your fingers.",
+      "order": 1,
+      "unlock": { "type": "always" }
+    },
+    {
+      "id": "solopractice",
+      "label": "Solo Practice",
+      "description": "Standalone pieces for a single instrument.",
+      "order": 2,
+      "unlock": { "type": "all_completed", "category": "firststeps" },
+      "hint": "Complete every First Steps track."
+    },
+    {
+      "id": "fingerpicking",
+      "label": "Fingerpicking",
+      "description": "Delicate plucked patterns.",
+      "order": 3,
+      "unlock": {
+        "type": "any_of",
+        "rules": [
+          { "type": "all_completed", "category": "solopractice" },
+          { "type": "stat_threshold", "stat": "dexterity", "min": 0.5 }
+        ]
+      },
+      "hint": "Complete every Solo Practice track, or reach 50% Dexterity."
+    },
+    {
+      "id": "classicsongs",
+      "label": "Classic Songs",
+      "description": "The crowd-pleasers.",
+      "order": 4,
+      "unlock": { "type": "stat_threshold", "stat": "endurance", "min": 100 },
+      "hint": "Reach 100 Endurance."
+    },
+    {
+      "id": "ukrainianfirecamp",
+      "label": "Ukrainian Firecamp",
+      "description": "Sit at the firecamp and relax, Stalker.",
+      "order": 5,
+      "unlock": { "type": "always" }
+    }
+  ]
+}

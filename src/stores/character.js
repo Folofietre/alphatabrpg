@@ -1,8 +1,13 @@
 import { defineStore } from 'pinia'
 import { SUPPORTED_INSTRUMENTS } from '@/utils/instruments'
 
-const SAVE_KEY = 'alphatab_rpg_save_v4'
-const LEGACY_KEYS = ['alphatab_rpg_save_v3', 'alphatab_rpg_save_v2', 'alphatab_rpg_save']
+const SAVE_KEY = 'alphatab_rpg_save_v5'
+const LEGACY_KEYS = [
+  'alphatab_rpg_save_v4',
+  'alphatab_rpg_save_v3',
+  'alphatab_rpg_save_v2',
+  'alphatab_rpg_save',
+]
 
 const SPEED_CAP = 600
 const ENDURANCE_CAP = 500
@@ -46,6 +51,8 @@ export const useCharacterStore = defineStore('character', {
     character: defaultCharacter(),
     history: [],
     notesPlayed: 0,
+    // tabId → { firstCompletedAt: ISO, completedCount: N, bestAccuracy: 0..1 }
+    completedTabs: {},
   }),
 
   getters: {
@@ -73,6 +80,7 @@ export const useCharacterStore = defineStore('character', {
       const saved = JSON.parse(raw)
       this.character = { ...defaultCharacter(), ...(saved.character ?? {}) }
       this.history = saved.history ?? []
+      this.completedTabs = saved.completedTabs ?? {}
 
       // Migrated saves never had an instrument — they default to piano,
       // the most permissive class, so the existing player isn't locked out.
@@ -95,6 +103,7 @@ export const useCharacterStore = defineStore('character', {
       }
       this.notesPlayed = 0
       this.history = []
+      this.completedTabs = {}
       this.save()
     },
 
@@ -102,8 +111,29 @@ export const useCharacterStore = defineStore('character', {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
         character: this.character,
         history: this.history,
+        completedTabs: this.completedTabs,
         savedAt: new Date().toISOString(),
       }))
+    },
+
+    markTabCompleted(tabId, accuracy) {
+      if (!tabId) return
+      const existing = this.completedTabs[tabId]
+      const now = new Date().toISOString()
+      this.completedTabs = {
+        ...this.completedTabs,
+        [tabId]: existing
+          ? {
+              firstCompletedAt: existing.firstCompletedAt,
+              completedCount: (existing.completedCount ?? 0) + 1,
+              bestAccuracy: Math.max(existing.bestAccuracy ?? 0, accuracy ?? 0),
+            }
+          : {
+              firstCompletedAt: now,
+              completedCount: 1,
+              bestAccuracy: accuracy ?? 0,
+            },
+      }
     },
 
     resetStamina() {
@@ -114,11 +144,11 @@ export const useCharacterStore = defineStore('character', {
       this.notesPlayed += amount
     },
 
-    applySessionXP({ title, accuracy, outcome, beatCount }) {
+    applySessionXP({ tabId, title, accuracy, outcome, beatCount, bonusMultiplier = 1 }) {
       // Sessions too short to count: no XP, no penalty (player barely tried).
       if (beatCount < MIN_BEATS_FOR_OUTCOME) {
         this.history.unshift({
-          title, accuracy, outcome, beatCount,
+          tabId, title, accuracy, outcome, beatCount,
           date: new Date().toISOString(),
           xpGained: { speed: 0, dexterity: 0, endurance: 0 },
           tooShort: true,
@@ -128,7 +158,13 @@ export const useCharacterStore = defineStore('character', {
         return { speed: 0, dexterity: 0, endurance: 0, tooShort: true }
       }
 
-      const xpGained = gainsFor(outcome, accuracy)
+      const base = gainsFor(outcome, accuracy)
+      // Multiplier only boosts positive gains; penalties stay raw.
+      const xpGained = {
+        speed:     base.speed     > 0 ? base.speed     * bonusMultiplier : base.speed,
+        dexterity: base.dexterity > 0 ? base.dexterity * bonusMultiplier : base.dexterity,
+        endurance: base.endurance > 0 ? base.endurance * bonusMultiplier : base.endurance,
+      }
       const before = { ...this.character }
 
       this.character.speed     = clamp(this.character.speed     + xpGained.speed,     SPEED_FLOOR, SPEED_CAP)
@@ -142,10 +178,16 @@ export const useCharacterStore = defineStore('character', {
         endurance: this.character.endurance - before.endurance,
       }
 
+      // Mark the tab as completed if this session was a true completion.
+      if (outcome === 'completed') {
+        this.markTabCompleted(tabId, accuracy)
+      }
+
       this.history.unshift({
-        title, accuracy, outcome, beatCount,
+        tabId, title, accuracy, outcome, beatCount,
         date: new Date().toISOString(),
         xpGained: actual,
+        bonusMultiplier: bonusMultiplier !== 1 ? bonusMultiplier : undefined,
       })
       if (this.history.length > 20) this.history.pop()
 
@@ -157,6 +199,7 @@ export const useCharacterStore = defineStore('character', {
       this.character = defaultCharacter()
       this.history = []
       this.notesPlayed = 0
+      this.completedTabs = {}
       localStorage.removeItem(SAVE_KEY)
     },
   },
