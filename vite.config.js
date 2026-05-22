@@ -51,7 +51,7 @@ async function readCategoriesConfig(tabsDir) {
   }
 }
 
-async function listTabsInCategory(tabsDir, categoryId) {
+async function listTabsInCategory(tabsDir, categoryId, base) {
   const categoryDir = path.join(tabsDir, categoryId)
   let entries
   try {
@@ -68,13 +68,13 @@ async function listTabsInCategory(tabsDir, categoryId) {
         category: categoryId,
         artist,
         title,
-        file: `/tabs/${encodeURIComponent(categoryId)}/${encodeURIComponent(e.name)}`,
+        file: `${base}tabs/${encodeURIComponent(categoryId)}/${encodeURIComponent(e.name)}`,
       }
     })
     .sort((a, b) => a.title.localeCompare(b.title))
 }
 
-async function buildTabsManifest(tabsDir) {
+async function buildTabsManifest(tabsDir, base) {
   const categories = await readCategoriesConfig(tabsDir)
   if (!categories) {
     console.warn('[tabs-index] No categories.json at the root of public/tabs/. Manifest will be empty.')
@@ -88,7 +88,7 @@ async function buildTabsManifest(tabsDir) {
   const tabs = []
   const normalizedCategories = []
   for (const cat of sortedCategories) {
-    const catTabs = await listTabsInCategory(tabsDir, cat.id)
+    const catTabs = await listTabsInCategory(tabsDir, cat.id, base)
     tabs.push(...catTabs)
     normalizedCategories.push({
       id: cat.id,
@@ -105,12 +105,16 @@ async function buildTabsManifest(tabsDir) {
 
 function tabsIndexPlugin() {
   const tabsDir = fileURLToPath(new URL('./public/tabs', import.meta.url))
+  let resolvedBase = '/'
   return {
     name: 'tabs-index',
+    configResolved(config) {
+      resolvedBase = config.base || '/'
+    },
     configureServer(server) {
       server.middlewares.use('/tabs/index.json', async (req, res, next) => {
         try {
-          const manifest = await buildTabsManifest(tabsDir)
+          const manifest = await buildTabsManifest(tabsDir, resolvedBase)
           res.setHeader('Content-Type', 'application/json')
           res.setHeader('Cache-Control', 'no-store')
           res.end(JSON.stringify(manifest))
@@ -120,7 +124,7 @@ function tabsIndexPlugin() {
       })
     },
     async generateBundle() {
-      const manifest = await buildTabsManifest(tabsDir)
+      const manifest = await buildTabsManifest(tabsDir, resolvedBase)
       this.emitFile({
         type: 'asset',
         fileName: 'tabs/index.json',

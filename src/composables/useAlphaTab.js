@@ -139,14 +139,14 @@ export function useAlphaTab(containerRef) {
 
     api.value = new alphaTab.AlphaTabApi(containerRef.value, {
       core: {
-        fontDirectory: '/font/',
+        fontDirectory: `${import.meta.env.BASE_URL}font/`,
       },
       player: {
         enablePlayer: true,
         enableCursor: true,
         enableAnimatedBeatCursor: true,
         enableUserInteraction: false,
-        soundFont: '/soundfont/sonivox.sf2',
+        soundFont: `${import.meta.env.BASE_URL}soundfont/sonivox.sf2`,
         scrollElement: containerRef.value,
         scrollMode: alphaTab.ScrollMode.Continuous,
       },

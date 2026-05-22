@@ -10,7 +10,7 @@ async function ensureLoaded() {
   if (loaded.value || loading.value) return
   loading.value = true
   try {
-    const res = await fetch('/tabs/index.json', { cache: 'no-store' })
+    const res = await fetch(`${import.meta.env.BASE_URL}tabs/index.json`, { cache: 'no-store' })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     manifest.value = await res.json()
     loaded.value = true
