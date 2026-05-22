@@ -19,6 +19,13 @@ function parseFilename(filename) {
   base = base.replace(/[-_\s]+\d{4}[-_\s]\d{1,2}[-_\s]\d{1,2}$/, '').trim()
   base = base.replace(/[-_\s]+\d{4}$/, '').trim()
 
+  // Lesson-style numeric prefix ("1 - Intro", "02 - Pentatonic"): keep the
+  // whole base as the title so it stays visible and sorts naturally with the
+  // numeric collator. No artist split.
+  if (/^\d+\s*-\s+/.test(base)) {
+    return { artist: '', title: base }
+  }
+
   // Prefer " - " (space-hyphen-space) as artist/title separator.
   let dashIdx = base.indexOf(' - ')
   let sepLen = 3
@@ -71,7 +78,9 @@ async function listTabsInCategory(tabsDir, categoryId, base) {
         file: `${base}tabs/${encodeURIComponent(categoryId)}/${encodeURIComponent(e.name)}`,
       }
     })
-    .sort((a, b) => a.title.localeCompare(b.title))
+    .sort((a, b) =>
+      a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' }),
+    )
 }
 
 async function buildTabsManifest(tabsDir, base) {

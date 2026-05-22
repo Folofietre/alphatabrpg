@@ -16,12 +16,20 @@
       "hint": "Complete every absolute beginner lesson track."
     },
     {
+      "id": "pentatonic",
+      "label": "Discover the Pentatonic Scale",
+      "description": "Discover the Pentatonic Scale.",
+      "order": 1,
+      "unlock": { "type": "all_completed", "category": "beginnerlesson2" },
+      "hint": "Complete every beginner lesson track."
+    },
+    {
       "id": "firststeps",
       "label": "Children's tunes",
       "description": "Children's tunes to find your fingers.",
       "order": 1,
-      "unlock": { "type": "all_completed", "category": "beginnerlesson2" },
-      "hint": "Complete every beginner lesson track."
+      "unlock": { "type": "all_completed", "category": "pentatonic" },
+      "hint": "Complete every pentatonic lesson track."
     },
     {
       "id": "solopractice",
