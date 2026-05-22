@@ -22,15 +22,26 @@
       "hint": "Complete every absolute beginner lesson track."
     },
     {
-      "id": "firststeps",
-      "label": "Children's tunes",
-      "description": "Children's tunes to find your fingers.",
+      "id": "pentatonic",
+      "label": "Discover the Pentatonic Scale",
+      "description": "Discover the Pentatonic Scale.",
       "order": 1,
       "unlock": {
         "type": "all_completed",
         "category": "beginnerlesson2"
       },
       "hint": "Complete every beginner lesson track."
+    },
+    {
+      "id": "firststeps",
+      "label": "Children's tunes",
+      "description": "Children's tunes to find your fingers.",
+      "order": 1,
+      "unlock": {
+        "type": "all_completed",
+        "category": "pentatonic"
+      },
+      "hint": "Complete every pentatonic lesson track."
     },
     {
       "id": "solopractice",
@@ -90,60 +101,102 @@
   ],
   "tabs": [
     {
-      "id": "beginnerlesson/9-rhythm-study-1.gp",
+      "id": "beginnerlesson/1 - Rythm Study.gp",
       "category": "beginnerlesson",
-      "artist": "9",
-      "title": "rhythm-study-1",
-      "file": "/alphatabrpg/tabs/beginnerlesson/9-rhythm-study-1.gp"
+      "artist": "",
+      "title": "1 - Rythm Study",
+      "file": "/alphatabrpg/tabs/beginnerlesson/1%20-%20Rythm%20Study.gp"
     },
     {
-      "id": "beginnerlesson/11-Rock-rhythm-study.gp",
+      "id": "beginnerlesson/2 - Solo Study.gp",
       "category": "beginnerlesson",
-      "artist": "11",
-      "title": "Rock-rhythm-study",
-      "file": "/alphatabrpg/tabs/beginnerlesson/11-Rock-rhythm-study.gp"
+      "artist": "",
+      "title": "2 - Solo Study",
+      "file": "/alphatabrpg/tabs/beginnerlesson/2%20-%20Solo%20Study.gp"
     },
     {
-      "id": "beginnerlesson/12-rock-solo-study.gp",
+      "id": "beginnerlesson/3 - Rock Rythm Study.gp",
       "category": "beginnerlesson",
-      "artist": "12",
-      "title": "rock-solo-study",
-      "file": "/alphatabrpg/tabs/beginnerlesson/12-rock-solo-study.gp"
+      "artist": "",
+      "title": "3 - Rock Rythm Study",
+      "file": "/alphatabrpg/tabs/beginnerlesson/3%20-%20Rock%20Rythm%20Study.gp"
     },
     {
-      "id": "beginnerlesson/10-solo-study-1.gp",
+      "id": "beginnerlesson/4 - Rock Solo Study.gp",
       "category": "beginnerlesson",
-      "artist": "10",
-      "title": "solo-study-1",
-      "file": "/alphatabrpg/tabs/beginnerlesson/10-solo-study-1.gp"
+      "artist": "",
+      "title": "4 - Rock Solo Study",
+      "file": "/alphatabrpg/tabs/beginnerlesson/4%20-%20Rock%20Solo%20Study.gp"
     },
     {
-      "id": "beginnerlesson2/13-acoustic-rhythm-study-1.gp",
+      "id": "beginnerlesson2/5 - Acoustic Rythm Study.gp",
       "category": "beginnerlesson2",
-      "artist": "13",
-      "title": "acoustic-rhythm-study-1",
-      "file": "/alphatabrpg/tabs/beginnerlesson2/13-acoustic-rhythm-study-1.gp"
+      "artist": "",
+      "title": "5 - Acoustic Rythm Study",
+      "file": "/alphatabrpg/tabs/beginnerlesson2/5%20-%20Acoustic%20Rythm%20Study.gp"
     },
     {
-      "id": "beginnerlesson2/15-acoustic-rhythm-study-2.gp",
+      "id": "beginnerlesson2/6 - Acoustic Solo Study.gp",
       "category": "beginnerlesson2",
-      "artist": "15",
-      "title": "acoustic-rhythm-study-2",
-      "file": "/alphatabrpg/tabs/beginnerlesson2/15-acoustic-rhythm-study-2.gp"
+      "artist": "",
+      "title": "6 - Acoustic Solo Study",
+      "file": "/alphatabrpg/tabs/beginnerlesson2/6%20-%20Acoustic%20Solo%20Study.gp"
     },
     {
-      "id": "beginnerlesson2/14-acoustic-solo-study-1.gp",
+      "id": "beginnerlesson2/7 - Acoustic Rythm Study.gp",
       "category": "beginnerlesson2",
-      "artist": "14",
-      "title": "acoustic-solo-study-1",
-      "file": "/alphatabrpg/tabs/beginnerlesson2/14-acoustic-solo-study-1.gp"
+      "artist": "",
+      "title": "7 - Acoustic Rythm Study",
+      "file": "/alphatabrpg/tabs/beginnerlesson2/7%20-%20Acoustic%20Rythm%20Study.gp"
     },
     {
-      "id": "beginnerlesson2/16-acoustic-solo-study-2.gp",
+      "id": "beginnerlesson2/8 - Acoustic Solo Study.gp",
       "category": "beginnerlesson2",
-      "artist": "16",
-      "title": "acoustic-solo-study-2",
-      "file": "/alphatabrpg/tabs/beginnerlesson2/16-acoustic-solo-study-2.gp"
+      "artist": "",
+      "title": "8 - Acoustic Solo Study",
+      "file": "/alphatabrpg/tabs/beginnerlesson2/8%20-%20Acoustic%20Solo%20Study.gp"
+    },
+    {
+      "id": "pentatonic/9 - Pentatonic lesson.gp",
+      "category": "pentatonic",
+      "artist": "",
+      "title": "9 - Pentatonic lesson",
+      "file": "/alphatabrpg/tabs/pentatonic/9%20-%20Pentatonic%20lesson.gp"
+    },
+    {
+      "id": "pentatonic/10 - Pentatonic lesson.gp",
+      "category": "pentatonic",
+      "artist": "",
+      "title": "10 - Pentatonic lesson",
+      "file": "/alphatabrpg/tabs/pentatonic/10%20-%20Pentatonic%20lesson.gp"
+    },
+    {
+      "id": "pentatonic/11 - Pentatonic lesson.gp",
+      "category": "pentatonic",
+      "artist": "",
+      "title": "11 - Pentatonic lesson",
+      "file": "/alphatabrpg/tabs/pentatonic/11%20-%20Pentatonic%20lesson.gp"
+    },
+    {
+      "id": "pentatonic/12 - Pentatonic lesson.gp",
+      "category": "pentatonic",
+      "artist": "",
+      "title": "12 - Pentatonic lesson",
+      "file": "/alphatabrpg/tabs/pentatonic/12%20-%20Pentatonic%20lesson.gp"
+    },
+    {
+      "id": "pentatonic/13 - Pentatonic lesson.gp",
+      "category": "pentatonic",
+      "artist": "",
+      "title": "13 - Pentatonic lesson",
+      "file": "/alphatabrpg/tabs/pentatonic/13%20-%20Pentatonic%20lesson.gp"
+    },
+    {
+      "id": "firststeps/Misc Children - Frere Jacques.gp",
+      "category": "firststeps",
+      "artist": "Misc Children",
+      "title": "Frere Jacques",
+      "file": "/alphatabrpg/tabs/firststeps/Misc%20Children%20-%20Frere%20Jacques.gp"
     },
     {
       "id": "firststeps/Misc Children - Head Shoulders Knees And Toes.gp5",
@@ -153,25 +206,18 @@
       "file": "/alphatabrpg/tabs/firststeps/Misc%20Children%20-%20Head%20Shoulders%20Knees%20And%20Toes.gp5"
     },
     {
-      "id": "firststeps/Misc Children - Old Macdonald Had A Farm (ver 2 by tombailey1234).gpx",
+      "id": "firststeps/Misc Children - Old Macdonald Had A Farm.gpx",
       "category": "firststeps",
       "artist": "Misc Children",
       "title": "Old Macdonald Had A Farm",
-      "file": "/alphatabrpg/tabs/firststeps/Misc%20Children%20-%20Old%20Macdonald%20Had%20A%20Farm%20(ver%202%20by%20tombailey1234).gpx"
+      "file": "/alphatabrpg/tabs/firststeps/Misc%20Children%20-%20Old%20Macdonald%20Had%20A%20Farm.gpx"
     },
     {
-      "id": "firststeps/Misc Children - Twinkle Twinkle Little Star (ver 2 by emad).gp4",
+      "id": "firststeps/Misc Children - Twinkle Twinkle Little Star.gp4",
       "category": "firststeps",
       "artist": "Misc Children",
       "title": "Twinkle Twinkle Little Star",
-      "file": "/alphatabrpg/tabs/firststeps/Misc%20Children%20-%20Twinkle%20Twinkle%20Little%20Star%20(ver%202%20by%20emad).gp4"
-    },
-    {
-      "id": "solopractice/Misc Children - Frere Jacques.gp",
-      "category": "solopractice",
-      "artist": "Misc Children",
-      "title": "Frere Jacques",
-      "file": "/alphatabrpg/tabs/solopractice/Misc%20Children%20-%20Frere%20Jacques.gp"
+      "file": "/alphatabrpg/tabs/firststeps/Misc%20Children%20-%20Twinkle%20Twinkle%20Little%20Star.gp4"
     },
     {
       "id": "solopractice/Metallica - Nothing Else Matters.gp",
@@ -179,13 +225,6 @@
       "artist": "Metallica",
       "title": "Nothing Else Matters",
       "file": "/alphatabrpg/tabs/solopractice/Metallica%20-%20Nothing%20Else%20Matters.gp"
-    },
-    {
-      "id": "solopractice/Oasis - Wonderwall.gp",
-      "category": "solopractice",
-      "artist": "Oasis",
-      "title": "Wonderwall",
-      "file": "/alphatabrpg/tabs/solopractice/Oasis%20-%20Wonderwall.gp"
     },
     {
       "id": "fingerpicking/Sungha Jung - River Flows In You.gp5",
@@ -202,11 +241,11 @@
       "file": "/alphatabrpg/tabs/classicsongs/Creedence%20Clearwater%20Revival%20-%20Bad%20Moon%20Rising.gp3"
     },
     {
-      "id": "classicsongs/Oasis - Dont Look Back In Anger (ver 3 by andreylp).gp",
+      "id": "classicsongs/Oasis - Dont Look Back In Anger.gp",
       "category": "classicsongs",
       "artist": "Oasis",
       "title": "Dont Look Back In Anger",
-      "file": "/alphatabrpg/tabs/classicsongs/Oasis%20-%20Dont%20Look%20Back%20In%20Anger%20(ver%203%20by%20andreylp).gp"
+      "file": "/alphatabrpg/tabs/classicsongs/Oasis%20-%20Dont%20Look%20Back%20In%20Anger.gp"
     },
     {
       "id": "classicsongs/Creedence Clearwater Revival - Down On The Corner.gp4",
@@ -216,11 +255,11 @@
       "file": "/alphatabrpg/tabs/classicsongs/Creedence%20Clearwater%20Revival%20-%20Down%20On%20The%20Corner.gp4"
     },
     {
-      "id": "classicsongs/Led Zeppelin-Stairway to Heaven-05-15-2026.gp",
+      "id": "classicsongs/Led Zeppelin - Stairway to Heaven.gp",
       "category": "classicsongs",
       "artist": "Led Zeppelin",
       "title": "Stairway to Heaven",
-      "file": "/alphatabrpg/tabs/classicsongs/Led%20Zeppelin-Stairway%20to%20Heaven-05-15-2026.gp"
+      "file": "/alphatabrpg/tabs/classicsongs/Led%20Zeppelin%20-%20Stairway%20to%20Heaven.gp"
     },
     {
       "id": "classicsongs/Oasis - Wonderwall.gp",
@@ -251,6 +290,13 @@
       "file": "/alphatabrpg/tabs/ukrainianfirecamp/Misc%20Computer%20Games%20-%20Stalker%20-%20Cheeki%20Breeki%20Song.gp5"
     },
     {
+      "id": "ukrainianfirecamp/Misc Computer Games - Stalker - Guitar Song 6.gp5",
+      "category": "ukrainianfirecamp",
+      "artist": "Misc Computer Games",
+      "title": "Stalker - Guitar Song 6",
+      "file": "/alphatabrpg/tabs/ukrainianfirecamp/Misc%20Computer%20Games%20-%20Stalker%20-%20Guitar%20Song%206.gp5"
+    },
+    {
       "id": "ukrainianfirecamp/Misc Computer Games - Stalker - Guitar Song 12.gp5",
       "category": "ukrainianfirecamp",
       "artist": "Misc Computer Games",
@@ -277,13 +323,6 @@
       "artist": "Misc Computer Games",
       "title": "Stalker - Guitar Song 24",
       "file": "/alphatabrpg/tabs/ukrainianfirecamp/Misc%20Computer%20Games%20-%20Stalker%20-%20Guitar%20Song%2024.gp5"
-    },
-    {
-      "id": "ukrainianfirecamp/Misc Computer Games - Stalker - Guitar Song 6.gp5",
-      "category": "ukrainianfirecamp",
-      "artist": "Misc Computer Games",
-      "title": "Stalker - Guitar Song 6",
-      "file": "/alphatabrpg/tabs/ukrainianfirecamp/Misc%20Computer%20Games%20-%20Stalker%20-%20Guitar%20Song%206.gp5"
     },
     {
       "id": "ukrainianfirecamp/Misc Computer Games - Stalker - Peaceful Ending.gp5",
