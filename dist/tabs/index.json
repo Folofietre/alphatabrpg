@@ -1,0 +1,231 @@
+{
+  "categories": [
+    {
+      "id": "firststeps",
+      "label": "First Steps",
+      "description": "Children's tunes to find your fingers.",
+      "order": 1,
+      "unlock": {
+        "type": "always"
+      },
+      "hint": null
+    },
+    {
+      "id": "solopractice",
+      "label": "Solo Practice",
+      "description": "Standalone pieces for a single instrument.",
+      "order": 2,
+      "unlock": {
+        "type": "all_completed",
+        "category": "firststeps"
+      },
+      "hint": "Complete every First Steps track."
+    },
+    {
+      "id": "fingerpicking",
+      "label": "Fingerpicking",
+      "description": "Delicate plucked patterns.",
+      "order": 3,
+      "unlock": {
+        "type": "any_of",
+        "rules": [
+          {
+            "type": "all_completed",
+            "category": "solopractice"
+          },
+          {
+            "type": "stat_threshold",
+            "stat": "dexterity",
+            "min": 0.5
+          }
+        ]
+      },
+      "hint": "Complete every Solo Practice track, or reach 50% Dexterity."
+    },
+    {
+      "id": "classicsongs",
+      "label": "Classic Songs",
+      "description": "The crowd-pleasers.",
+      "order": 4,
+      "unlock": {
+        "type": "stat_threshold",
+        "stat": "endurance",
+        "min": 100
+      },
+      "hint": "Reach 100 Endurance."
+    },
+    {
+      "id": "ukrainianfirecamp",
+      "label": "Ukrainian Firecamp",
+      "description": "Sit at the firecamp and relax, Stalker.",
+      "order": 5,
+      "unlock": {
+        "type": "always"
+      },
+      "hint": null
+    }
+  ],
+  "tabs": [
+    {
+      "id": "firststeps/Misc Children - Head Shoulders Knees And Toes.gp5",
+      "category": "firststeps",
+      "artist": "Misc Children",
+      "title": "Head Shoulders Knees And Toes",
+      "file": "/tabs/firststeps/Misc%20Children%20-%20Head%20Shoulders%20Knees%20And%20Toes.gp5"
+    },
+    {
+      "id": "firststeps/Misc Children - Old Macdonald Had A Farm (ver 2 by tombailey1234).gpx",
+      "category": "firststeps",
+      "artist": "Misc Children",
+      "title": "Old Macdonald Had A Farm",
+      "file": "/tabs/firststeps/Misc%20Children%20-%20Old%20Macdonald%20Had%20A%20Farm%20(ver%202%20by%20tombailey1234).gpx"
+    },
+    {
+      "id": "firststeps/Misc Children - Twinkle Twinkle Little Star (ver 2 by emad).gp4",
+      "category": "firststeps",
+      "artist": "Misc Children",
+      "title": "Twinkle Twinkle Little Star",
+      "file": "/tabs/firststeps/Misc%20Children%20-%20Twinkle%20Twinkle%20Little%20Star%20(ver%202%20by%20emad).gp4"
+    },
+    {
+      "id": "solopractice/Misc Children - Frere Jacques.gp",
+      "category": "solopractice",
+      "artist": "Misc Children",
+      "title": "Frere Jacques",
+      "file": "/tabs/solopractice/Misc%20Children%20-%20Frere%20Jacques.gp"
+    },
+    {
+      "id": "solopractice/Metallica - Nothing Else Matters.gp",
+      "category": "solopractice",
+      "artist": "Metallica",
+      "title": "Nothing Else Matters",
+      "file": "/tabs/solopractice/Metallica%20-%20Nothing%20Else%20Matters.gp"
+    },
+    {
+      "id": "solopractice/Oasis - Wonderwall.gp",
+      "category": "solopractice",
+      "artist": "Oasis",
+      "title": "Wonderwall",
+      "file": "/tabs/solopractice/Oasis%20-%20Wonderwall.gp"
+    },
+    {
+      "id": "fingerpicking/Sungha Jung - River Flows In You.gp5",
+      "category": "fingerpicking",
+      "artist": "Sungha Jung",
+      "title": "River Flows In You",
+      "file": "/tabs/fingerpicking/Sungha%20Jung%20-%20River%20Flows%20In%20You.gp5"
+    },
+    {
+      "id": "classicsongs/Creedence Clearwater Revival - Bad Moon Rising.gp3",
+      "category": "classicsongs",
+      "artist": "Creedence Clearwater Revival",
+      "title": "Bad Moon Rising",
+      "file": "/tabs/classicsongs/Creedence%20Clearwater%20Revival%20-%20Bad%20Moon%20Rising.gp3"
+    },
+    {
+      "id": "classicsongs/Oasis - Dont Look Back In Anger (ver 3 by andreylp).gp",
+      "category": "classicsongs",
+      "artist": "Oasis",
+      "title": "Dont Look Back In Anger",
+      "file": "/tabs/classicsongs/Oasis%20-%20Dont%20Look%20Back%20In%20Anger%20(ver%203%20by%20andreylp).gp"
+    },
+    {
+      "id": "classicsongs/Creedence Clearwater Revival - Down On The Corner.gp4",
+      "category": "classicsongs",
+      "artist": "Creedence Clearwater Revival",
+      "title": "Down On The Corner",
+      "file": "/tabs/classicsongs/Creedence%20Clearwater%20Revival%20-%20Down%20On%20The%20Corner.gp4"
+    },
+    {
+      "id": "classicsongs/Led Zeppelin-Stairway to Heaven-05-15-2026.gp",
+      "category": "classicsongs",
+      "artist": "Led Zeppelin",
+      "title": "Stairway to Heaven",
+      "file": "/tabs/classicsongs/Led%20Zeppelin-Stairway%20to%20Heaven-05-15-2026.gp"
+    },
+    {
+      "id": "classicsongs/Oasis - Wonderwall.gp",
+      "category": "classicsongs",
+      "artist": "Oasis",
+      "title": "Wonderwall",
+      "file": "/tabs/classicsongs/Oasis%20-%20Wonderwall.gp"
+    },
+    {
+      "id": "ukrainianfirecamp/Misc Computer Games - Stalker - Campfire Song.gp5",
+      "category": "ukrainianfirecamp",
+      "artist": "Misc Computer Games",
+      "title": "Stalker - Campfire Song",
+      "file": "/tabs/ukrainianfirecamp/Misc%20Computer%20Games%20-%20Stalker%20-%20Campfire%20Song.gp5"
+    },
+    {
+      "id": "ukrainianfirecamp/Misc Computer Games - Stalker - Campfire Song 12.gpx",
+      "category": "ukrainianfirecamp",
+      "artist": "Misc Computer Games",
+      "title": "Stalker - Campfire Song 12",
+      "file": "/tabs/ukrainianfirecamp/Misc%20Computer%20Games%20-%20Stalker%20-%20Campfire%20Song%2012.gpx"
+    },
+    {
+      "id": "ukrainianfirecamp/Misc Computer Games - Stalker - Cheeki Breeki Song.gp5",
+      "category": "ukrainianfirecamp",
+      "artist": "Misc Computer Games",
+      "title": "Stalker - Cheeki Breeki Song",
+      "file": "/tabs/ukrainianfirecamp/Misc%20Computer%20Games%20-%20Stalker%20-%20Cheeki%20Breeki%20Song.gp5"
+    },
+    {
+      "id": "ukrainianfirecamp/Misc Computer Games - Stalker - Guitar Song 12.gp5",
+      "category": "ukrainianfirecamp",
+      "artist": "Misc Computer Games",
+      "title": "Stalker - Guitar Song 12",
+      "file": "/tabs/ukrainianfirecamp/Misc%20Computer%20Games%20-%20Stalker%20-%20Guitar%20Song%2012.gp5"
+    },
+    {
+      "id": "ukrainianfirecamp/Misc Computer Games - Stalker - Guitar Song 16.gp5",
+      "category": "ukrainianfirecamp",
+      "artist": "Misc Computer Games",
+      "title": "Stalker - Guitar Song 16",
+      "file": "/tabs/ukrainianfirecamp/Misc%20Computer%20Games%20-%20Stalker%20-%20Guitar%20Song%2016.gp5"
+    },
+    {
+      "id": "ukrainianfirecamp/Misc Computer Games - Stalker - Guitar Song 17.gp5",
+      "category": "ukrainianfirecamp",
+      "artist": "Misc Computer Games",
+      "title": "Stalker - Guitar Song 17",
+      "file": "/tabs/ukrainianfirecamp/Misc%20Computer%20Games%20-%20Stalker%20-%20Guitar%20Song%2017.gp5"
+    },
+    {
+      "id": "ukrainianfirecamp/Misc Computer Games - Stalker - Guitar Song 24.gp5",
+      "category": "ukrainianfirecamp",
+      "artist": "Misc Computer Games",
+      "title": "Stalker - Guitar Song 24",
+      "file": "/tabs/ukrainianfirecamp/Misc%20Computer%20Games%20-%20Stalker%20-%20Guitar%20Song%2024.gp5"
+    },
+    {
+      "id": "ukrainianfirecamp/Misc Computer Games - Stalker - Guitar Song 6.gp5",
+      "category": "ukrainianfirecamp",
+      "artist": "Misc Computer Games",
+      "title": "Stalker - Guitar Song 6",
+      "file": "/tabs/ukrainianfirecamp/Misc%20Computer%20Games%20-%20Stalker%20-%20Guitar%20Song%206.gp5"
+    },
+    {
+      "id": "ukrainianfirecamp/Misc Computer Games - Stalker - Peaceful Ending.gp5",
+      "category": "ukrainianfirecamp",
+      "artist": "Misc Computer Games",
+      "title": "Stalker - Peaceful Ending",
+      "file": "/tabs/ukrainianfirecamp/Misc%20Computer%20Games%20-%20Stalker%20-%20Peaceful%20Ending.gp5"
+    },
+    {
+      "id": "ukrainianfirecamp/Misc Computer Games - Stalker - Wasteland Ii.gp5",
+      "category": "ukrainianfirecamp",
+      "artist": "Misc Computer Games",
+      "title": "Stalker - Wasteland Ii",
+      "file": "/tabs/ukrainianfirecamp/Misc%20Computer%20Games%20-%20Stalker%20-%20Wasteland%20Ii.gp5"
+    },
+    {
+      "id": "ukrainianfirecamp/Misc Computer Games - Stalker Anomaly - Smuglyanka.gp",
+      "category": "ukrainianfirecamp",
+      "artist": "Misc Computer Games",
+      "title": "Stalker Anomaly - Smuglyanka",
+      "file": "/tabs/ukrainianfirecamp/Misc%20Computer%20Games%20-%20Stalker%20Anomaly%20-%20Smuglyanka.gp"
+    }
+  ]
+}
