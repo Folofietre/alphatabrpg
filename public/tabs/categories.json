@@ -11,7 +11,7 @@
       "id": "beginnerlesson2",
       "label": "Guitar Exercises for Beginners",
       "description": "Beginners exercises.",
-      "order": 1,
+      "order": 2,
       "unlock": { "type": "all_completed", "category": "beginnerlesson" },
       "hint": "Complete every absolute beginner lesson track."
     },
@@ -19,7 +19,7 @@
       "id": "pentatonic",
       "label": "Discover the Pentatonic Scale",
       "description": "Discover the Pentatonic Scale.",
-      "order": 1,
+      "order": 3,
       "unlock": { "type": "all_completed", "category": "beginnerlesson2" },
       "hint": "Complete every beginner lesson track."
     },
@@ -27,47 +27,47 @@
       "id": "firststeps",
       "label": "Children's tunes",
       "description": "Children's tunes to find your fingers.",
-      "order": 1,
+      "order": 4,
       "unlock": { "type": "all_completed", "category": "pentatonic" },
       "hint": "Complete every pentatonic lesson track."
     },
     {
-      "id": "solopractice",
-      "label": "Solo Practice",
-      "description": "Standalone pieces for a single instrument.",
-      "order": 2,
-      "unlock": { "type": "all_completed", "category": "firststeps" },
-      "hint": "Complete every Children's tunes track."
+      "id": "classicbeginnersongs",
+      "label": "Classic Beginner Songs",
+      "description": "The crowd-pleasers for beginners.",
+      "order": 5,
+      "unlock": { "type": "stat_threshold", "stat": "endurance", "min": 250 },
+      "hint": "Reach 250 Endurance."
+    },
+    {
+      "id": "classicadvancedsongs",
+      "label": "Classic Songs",
+      "description": "The crowd-pleasers for advanced players.",
+      "order": 6,
+      "unlock": { "type": "all_completed", "category": "classicbeginnersongs" },
+      "hint": "Complete every Classic Beginner Song track."
     },
     {
       "id": "fingerpicking",
       "label": "Fingerpicking",
       "description": "Delicate plucked patterns.",
-      "order": 3,
+      "order": 7,
       "unlock": {
         "type": "any_of",
         "rules": [
-          { "type": "all_completed", "category": "solopractice" },
+          { "type": "all_completed", "category": "classicsongs" },
           { "type": "stat_threshold", "stat": "dexterity", "min": 0.8 }
         ]
       },
-      "hint": "Complete every Solo Practice track, or reach 50% Dexterity."
-    },
-    {
-      "id": "classicsongs",
-      "label": "Classic Songs",
-      "description": "The crowd-pleasers.",
-      "order": 4,
-      "unlock": { "type": "stat_threshold", "stat": "endurance", "min": 300 },
-      "hint": "Reach 300 Endurance."
+      "hint": "Complete every Classic Song track, or reach 80% Dexterity."
     },
     {
       "id": "ukrainianfirecamp",
       "label": "Ukrainian Firecamp",
       "description": "Sit at the firecamp and relax, Stalker.",
-      "order": 5,
-      "unlock": { "type": "all_completed", "category": "beginnerlesson2" },
-      "hint": "Complete every beginner lesson track."
+      "order": 8,
+      "unlock": { "type": "all_completed", "category": "classicsongs" },
+      "hint": "Complete every Classic Song track."
     }
   ]
 }
