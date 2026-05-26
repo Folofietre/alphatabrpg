@@ -37,7 +37,7 @@ const playableTabs = computed(() =>
 )
 const totalBuiltinCount = computed(() => playableTabs.value.length)
 const completedBuiltinCount = computed(() =>
-  playableTabs.value.filter((t) => !!store.completedTabs[t.id]).length,
+  playableTabs.value.filter((t) => (store.tabRecords[t.id]?.completionsCount ?? 0) > 0).length,
 )
 const unlocked = computed(
   () => totalBuiltinCount.value > 0 && completedBuiltinCount.value >= totalBuiltinCount.value,

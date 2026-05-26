@@ -23,6 +23,17 @@
     </p>
 
     <template v-else>
+      <p v-if="recordDelta?.scorePB" class="high-score">
+        🏆 New high score!
+        <strong>
+          {{ formatScore(recordDelta.scoreBefore) }} → {{ formatScore(recordDelta.scoreAfter) }}
+        </strong>
+        <span class="stars">{{ scoreStars(recordDelta.starsAfter) }}</span>
+      </p>
+      <p v-else-if="currentScoreLine" class="score-line">
+        Score: <strong>{{ currentScoreLine }}</strong>
+      </p>
+
       <h4>{{ anyGain ? 'Gains & losses' : 'No changes' }}</h4>
       <p v-if="result.bonusMultiplier" class="bonus-line">
         Streak bonus: ×{{ result.bonusMultiplier.toFixed(2) }} applied to positive gains.
@@ -47,6 +58,14 @@
           </strong>
         </li>
       </ul>
+
+      <div v-if="recordDelta" class="comfort-row">
+        <span class="comfort-label">Comfort</span>
+        <ComfortBar :familiarity="recordDelta.familiarityBefore" />
+        <span class="comfort-arrow">→</span>
+        <ComfortBar :familiarity="recordDelta.familiarityAfter" />
+        <span v-if="crossedNeutral" class="milestone">You know this song now.</span>
+      </div>
     </template>
 
     <button class="replay" @click="$emit('replay')">{{ replayLabel }}</button>
@@ -55,6 +74,8 @@
 
 <script setup>
 import { computed } from 'vue'
+import { FAMILIARITY_NEUTRAL, compositeScore, starTier } from '@/utils/rpgEngine'
+import ComfortBar from './ComfortBar.vue'
 
 const props = defineProps({
   result: {
@@ -89,6 +110,29 @@ const anyGain = computed(() => {
   const g = props.result.xpGained
   return g && (g.speed !== 0 || g.dexterity !== 0 || g.endurance !== 0)
 })
+const recordDelta = computed(() => props.result.recordDelta ?? null)
+
+// Score for this run (regardless of PB). Only meaningful on completion.
+const currentScoreLine = computed(() => {
+  if (props.result.outcome !== 'completed') return null
+  if (recordDelta.value?.scorePB) return null // shown via the celebration line
+  // Reconstruct from the result fields: we don't always have access to the
+  // pre/post deltas if the score didn't improve. Approximate from accuracy
+  // alone won't do, so we just show the new best if present.
+  if (recordDelta.value?.scoreAfter != null) {
+    return `${formatScore(recordDelta.value.scoreAfter)} ${scoreStars(recordDelta.value.starsAfter)}`
+  }
+  return null
+})
+
+const crossedNeutral = computed(() => {
+  const d = recordDelta.value
+  if (!d) return false
+  return (
+    (d.familiarityBefore ?? 0) < FAMILIARITY_NEUTRAL
+    && (d.familiarityAfter ?? 0) >= FAMILIARITY_NEUTRAL
+  )
+})
 
 function signed(n) {
   if (n > 0) return `+${n}`
@@ -103,6 +147,17 @@ function signClass(v) {
   if (v < 0) return 'gain-negative'
   return 'gain-neutral'
 }
+function formatScore(n) {
+  if (n == null) return '—'
+  return `${Math.round(n)}%`
+}
+function scoreStars(n) {
+  const filled = Math.max(0, Math.min(5, n ?? 0))
+  return '★'.repeat(filled) + '☆'.repeat(5 - filled)
+}
+// silence unused-vars: compositeScore + starTier are re-exported for future use.
+void compositeScore
+void starTier
 </script>
 
 <style scoped>
@@ -176,6 +231,50 @@ function signClass(v) {
 .bonus-line {
   margin: 0;
   font-size: 0.85rem;
+  color: var(--palm-leaf);
+}
+.high-score {
+  margin: 0.25rem 0;
+  padding: 0.55rem 0.75rem;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  border-radius: 0.4rem;
+  font-size: 0.95rem;
+  color: var(--palm-leaf);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.high-score .stars {
+  font-size: 1.1rem;
+  letter-spacing: 1px;
+}
+.score-line {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+.comfort-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+  font-size: 0.85rem;
+  flex-wrap: wrap;
+}
+.comfort-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.7;
+}
+.comfort-arrow {
+  opacity: 0.7;
+}
+.milestone {
+  font-size: 0.78rem;
+  font-style: italic;
   color: var(--palm-leaf);
 }
 .replay {

@@ -121,7 +121,12 @@ function tabsIndexPlugin() {
       resolvedBase = config.base || '/'
     },
     configureServer(server) {
-      server.middlewares.use('/tabs/index.json', async (req, res, next) => {
+      // Match both base-prefixed and root URLs so the manifest works regardless
+      // of how the dev server is configured (base: '/' vs '/alphatabrpg/').
+      server.middlewares.use(async (req, res, next) => {
+        const url = req.url || ''
+        const baseManifest = `${resolvedBase}tabs/index.json`
+        if (url !== baseManifest && url !== '/tabs/index.json') return next()
         try {
           const manifest = await buildTabsManifest(tabsDir, resolvedBase)
           res.setHeader('Content-Type', 'application/json')

@@ -2,7 +2,13 @@ import { ref, watch, onUnmounted } from 'vue'
 import * as alphaTab from '@coderline/alphatab'
 import { useCharacterStore } from '@/stores/character'
 import { useSettings } from '@/composables/useSettings'
-import { rollBeatAccuracy, beatExhaustion, scoreOnsetRate } from '@/utils/rpgEngine'
+import {
+  rollBeatAccuracy,
+  beatExhaustion,
+  scoreOnsetRate,
+  analyzeScore,
+  effectiveDexFor,
+} from '@/utils/rpgEngine'
 import { findPlayableTrack, INSTRUMENT_META } from '@/utils/instruments'
 import { usePlaylist } from '@/composables/usePlaylist'
 
@@ -23,6 +29,8 @@ export function useAlphaTab(containerRef) {
   let nextOutcome = null    // outcome decided for the *next* beat to be played
   let lastNote = null       // last Note resolved by a roll (drives physicalDistance chaining)
   let playbackMultiplier = 1 // computed at scoreLoaded from speed stat vs score onset rate
+  let currentFamiliarity = 0 // snapshotted from tabRecords on scoreLoaded
+  let currentDifficulty = null // analyzed once per load, forwarded to applySessionXP
 
   function applyTransposition(semitones) {
     if (!api.value || semitones === currentTransposition) return
@@ -40,7 +48,10 @@ export function useAlphaTab(containerRef) {
       applyTransposition(0)
       return
     }
-    const roll = rollBeatAccuracy(store.accuracyThreshold, beat, lastNote, effectiveBpm())
+    // Per-song muscle memory: shift the base dexterity by the current
+    // familiarity for this tab (signed; penalty at 0, bonus near the cap).
+    const dex = effectiveDexFor(store.character.dexterity, currentFamiliarity)
+    const roll = rollBeatAccuracy(dex, beat, lastNote, effectiveBpm())
     lastNote = roll.lastNote
     nextOutcome = { success: roll.success, beat }
     applyTransposition(roll.success ? 0 : roll.semitones)
@@ -81,6 +92,8 @@ export function useAlphaTab(containerRef) {
       outcome: 'completed',
       beatCount,
       bonusMultiplier,
+      playbackMultiplier,
+      difficulty: currentDifficulty,
     })
 
     // Advance — onSongCompleted internally triggers the next-load via
@@ -109,6 +122,8 @@ export function useAlphaTab(containerRef) {
       outcome,
       beatCount,
       bonusMultiplier,
+      playbackMultiplier,
+      difficulty: currentDifficulty,
     })
 
     sessionResult.value = {
@@ -118,6 +133,7 @@ export function useAlphaTab(containerRef) {
       outcome,
       beatCount,
       xpGained,
+      recordDelta: xpGained?.recordDelta ?? null,
       bonusMultiplier: bonusMultiplier !== 1 ? bonusMultiplier : undefined,
       tooShort: xpGained?.tooShort === true,
       playlistFinished: playlist.isRunning.value && outcome === 'completed',
@@ -196,6 +212,16 @@ export function useAlphaTab(containerRef) {
       playbackMultiplier = Math.min(1, store.character.speed / Math.max(1, onsetRate))
       api.value.playbackSpeed = playbackMultiplier
       api.value.masterVolume = volume.value
+
+      // Snapshot per-tab muscle memory + difficulty for the upcoming run.
+      // Use a cached estimatedDifficulty from the record if we already have it,
+      // otherwise compute fresh via analyzeScore (the result is persisted on
+      // first session via recordTabSession).
+      const record = currentTabId ? store.tabRecords?.[currentTabId] : null
+      currentFamiliarity = record?.familiarity ?? 0
+      currentDifficulty =
+        record?.estimatedDifficulty ?? analyzeScore(score, match).estimatedDifficulty
+
       isReady.value = true
       sessionStats.value = { totalBeats: 0, successBeats: 0 }
       sessionResult.value = null

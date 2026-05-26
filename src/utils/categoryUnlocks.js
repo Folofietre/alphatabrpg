@@ -40,12 +40,18 @@ export function evaluateUnlock(rule, ctx) {
 }
 
 // Build a context object from manifest + character store state.
-export function buildUnlockContext({ tabs, completedTabs, character }) {
+// `tabRecords` is the v6 per-tab record map; a tab is "completed" for the
+// purpose of unlocks when its `completionsCount > 0`.
+export function buildUnlockContext({ tabs, tabRecords, character }) {
   const tabsByCategory = {}
   for (const tab of tabs ?? []) {
     if (!tabsByCategory[tab.category]) tabsByCategory[tab.category] = []
     tabsByCategory[tab.category].push(tab.id)
   }
-  const completedTabsSet = new Set(Object.keys(completedTabs ?? {}))
+  const completedTabsSet = new Set(
+    Object.entries(tabRecords ?? {})
+      .filter(([, rec]) => (rec?.completionsCount ?? 0) > 0)
+      .map(([id]) => id),
+  )
   return { tabsByCategory, completedTabsSet, character: character ?? {} }
 }

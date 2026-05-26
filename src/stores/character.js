@@ -1,8 +1,16 @@
 import { defineStore } from 'pinia'
 import { SUPPORTED_INSTRUMENTS } from '@/utils/instruments'
+import {
+  FAMILIARITY_CAP,
+  compositeScore,
+  starTier,
+} from '@/utils/rpgEngine'
 
-const SAVE_KEY = 'alphatab_rpg_save_v5'
+const SAVE_KEY = 'alphatab_rpg_save_v6'
+// Older save versions from earlier prototypes. We wipe them on load — no
+// migration during development, schema changes force a fresh character.
 const LEGACY_KEYS = [
+  'alphatab_rpg_save_v5',
   'alphatab_rpg_save_v4',
   'alphatab_rpg_save_v3',
   'alphatab_rpg_save_v2',
@@ -24,6 +32,19 @@ const defaultCharacter = () => ({
   speed: SPEED_FLOOR,
   dexterity: DEX_FLOOR,
   endurance: ENDURANCE_FLOOR,
+})
+
+const emptyTabRecord = () => ({
+  attemptsCount: 0,
+  completionsCount: 0,
+  firstCompletedAt: null,
+  lastPlayedAt: null,
+  bestAccuracy: null,
+  bestPlaybackSpeed: null,
+  bestScore: null,
+  bestStars: null,
+  familiarity: 0,
+  estimatedDifficulty: null,
 })
 
 function gainsFor(outcome, accuracy) {
@@ -51,8 +72,10 @@ export const useCharacterStore = defineStore('character', {
     character: defaultCharacter(),
     history: [],
     notesPlayed: 0,
-    // tabId → { firstCompletedAt: ISO, completedCount: N, bestAccuracy: 0..1 }
-    completedTabs: {},
+    // tabId → { attemptsCount, completionsCount, firstCompletedAt, lastPlayedAt,
+    //          bestAccuracy, bestPlaybackSpeed, bestScore, bestStars,
+    //          familiarity, estimatedDifficulty }
+    tabRecords: {},
   }),
 
   getters: {
@@ -62,35 +85,17 @@ export const useCharacterStore = defineStore('character', {
 
   actions: {
     load() {
-      let raw = localStorage.getItem(SAVE_KEY)
-      let migrated = false
-      if (!raw) {
-        // Migrate from the most recent legacy key, if any.
-        for (const key of LEGACY_KEYS) {
-          const legacy = localStorage.getItem(key)
-          if (legacy) {
-            raw = legacy
-            migrated = true
-            break
-          }
-        }
-      }
+      // Wipe legacy keys unconditionally. We're still in development; schema
+      // bumps reset the character rather than migrate.
+      for (const key of LEGACY_KEYS) localStorage.removeItem(key)
+
+      const raw = localStorage.getItem(SAVE_KEY)
       if (!raw) return
 
       const saved = JSON.parse(raw)
       this.character = { ...defaultCharacter(), ...(saved.character ?? {}) }
       this.history = saved.history ?? []
-      this.completedTabs = saved.completedTabs ?? {}
-
-      // Migrated saves never had an instrument — they default to piano,
-      // the most permissive class, so the existing player isn't locked out.
-      if (migrated && !this.character.instrument) {
-        this.character.instrument = 'piano'
-      }
-      if (migrated) {
-        this.save()
-        for (const key of LEGACY_KEYS) localStorage.removeItem(key)
-      }
+      this.tabRecords = saved.tabRecords ?? {}
     },
 
     createCharacter({ name, instrument }) {
@@ -103,7 +108,7 @@ export const useCharacterStore = defineStore('character', {
       }
       this.notesPlayed = 0
       this.history = []
-      this.completedTabs = {}
+      this.tabRecords = {}
       this.save()
     },
 
@@ -111,29 +116,9 @@ export const useCharacterStore = defineStore('character', {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
         character: this.character,
         history: this.history,
-        completedTabs: this.completedTabs,
+        tabRecords: this.tabRecords,
         savedAt: new Date().toISOString(),
       }))
-    },
-
-    markTabCompleted(tabId, accuracy) {
-      if (!tabId) return
-      const existing = this.completedTabs[tabId]
-      const now = new Date().toISOString()
-      this.completedTabs = {
-        ...this.completedTabs,
-        [tabId]: existing
-          ? {
-              firstCompletedAt: existing.firstCompletedAt,
-              completedCount: (existing.completedCount ?? 0) + 1,
-              bestAccuracy: Math.max(existing.bestAccuracy ?? 0, accuracy ?? 0),
-            }
-          : {
-              firstCompletedAt: now,
-              completedCount: 1,
-              bestAccuracy: accuracy ?? 0,
-            },
-      }
     },
 
     resetStamina() {
@@ -144,8 +129,76 @@ export const useCharacterStore = defineStore('character', {
       this.notesPlayed += amount
     },
 
-    applySessionXP({ tabId, title, accuracy, outcome, beatCount, bonusMultiplier = 1 }) {
-      // Sessions too short to count: no XP, no penalty (player barely tried).
+    // Single source of truth for per-tab record updates. Bumps counts, tracks
+    // best score on completion, caches estimatedDifficulty, and grows
+    // familiarity modulated by the player's skill vs. song difficulty.
+    // Returns a delta object describing what changed (for SessionResult UI).
+    recordTabSession({ tabId, outcome, accuracy, playbackMultiplier, difficulty }) {
+      if (!tabId) return null
+      const existing = this.tabRecords[tabId] ?? emptyTabRecord()
+      const now = new Date().toISOString()
+      const next = {
+        ...existing,
+        attemptsCount: (existing.attemptsCount ?? 0) + 1,
+        lastPlayedAt: now,
+      }
+      // Cache difficulty the first time we know it.
+      if (difficulty != null && existing.estimatedDifficulty == null) {
+        next.estimatedDifficulty = difficulty
+      }
+
+      let scorePB = false
+      if (outcome === 'completed') {
+        next.completionsCount = (existing.completionsCount ?? 0) + 1
+        if (!next.firstCompletedAt) next.firstCompletedAt = now
+
+        const score = compositeScore(accuracy, playbackMultiplier)
+        if (next.bestScore == null || score > next.bestScore) {
+          next.bestAccuracy = accuracy
+          next.bestPlaybackSpeed = playbackMultiplier
+          next.bestScore = score
+          next.bestStars = starTier(score)
+          scorePB = true
+        }
+      }
+
+      // Growth modulation: base delta × clamp(0.5, 1.5, skill / difficulty).
+      const baseDelta = outcome === 'completed' ? 0.05 : 0.02
+      const normalizedSpeed = (this.character.speed ?? SPEED_FLOOR) / SPEED_CAP
+      const skill = ((this.character.dexterity ?? 0) + normalizedSpeed) / 2
+      const diff = Math.max(0.15, next.estimatedDifficulty ?? difficulty ?? 0.5)
+      const ratio = skill / diff
+      const growthMultiplier = Math.max(0.5, Math.min(1.5, ratio))
+      const familiarityBefore = existing.familiarity ?? 0
+      next.familiarity = Math.min(
+        FAMILIARITY_CAP,
+        familiarityBefore + baseDelta * growthMultiplier,
+      )
+
+      this.tabRecords = { ...this.tabRecords, [tabId]: next }
+
+      return {
+        familiarityBefore,
+        familiarityAfter: next.familiarity,
+        scoreBefore: existing.bestScore,
+        scoreAfter: next.bestScore,
+        starsBefore: existing.bestStars,
+        starsAfter: next.bestStars,
+        scorePB,
+      }
+    },
+
+    applySessionXP({
+      tabId,
+      title,
+      accuracy,
+      outcome,
+      beatCount,
+      bonusMultiplier = 1,
+      playbackMultiplier = 1,
+      difficulty = null,
+    }) {
+      // Sessions too short to count: no XP, no penalty, no record bump.
       if (beatCount < MIN_BEATS_FOR_OUTCOME) {
         this.history.unshift({
           tabId, title, accuracy, outcome, beatCount,
@@ -155,7 +208,11 @@ export const useCharacterStore = defineStore('character', {
         })
         if (this.history.length > 20) this.history.pop()
         this.save()
-        return { speed: 0, dexterity: 0, endurance: 0, tooShort: true }
+        return {
+          speed: 0, dexterity: 0, endurance: 0,
+          tooShort: true,
+          recordDelta: null,
+        }
       }
 
       const base = gainsFor(outcome, accuracy)
@@ -171,17 +228,16 @@ export const useCharacterStore = defineStore('character', {
       this.character.dexterity = clamp(this.character.dexterity + xpGained.dexterity, DEX_FLOOR,   1.0)
       this.character.endurance = clamp(this.character.endurance + xpGained.endurance, ENDURANCE_FLOOR, ENDURANCE_CAP)
 
-      // Actual deltas after clamping (may be smaller than nominal if hitting a floor/cap).
       const actual = {
         speed: this.character.speed - before.speed,
         dexterity: this.character.dexterity - before.dexterity,
         endurance: this.character.endurance - before.endurance,
       }
 
-      // Mark the tab as completed if this session was a true completion.
-      if (outcome === 'completed') {
-        this.markTabCompleted(tabId, accuracy)
-      }
+      // Update the per-tab record (best score, completion count, familiarity).
+      const recordDelta = this.recordTabSession({
+        tabId, outcome, accuracy, playbackMultiplier, difficulty,
+      })
 
       this.history.unshift({
         tabId, title, accuracy, outcome, beatCount,
@@ -192,14 +248,14 @@ export const useCharacterStore = defineStore('character', {
       if (this.history.length > 20) this.history.pop()
 
       this.save()
-      return actual
+      return { ...actual, recordDelta }
     },
 
     reset() {
       this.character = defaultCharacter()
       this.history = []
       this.notesPlayed = 0
-      this.completedTabs = {}
+      this.tabRecords = {}
       localStorage.removeItem(SAVE_KEY)
     },
   },

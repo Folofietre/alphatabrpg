@@ -1,3 +1,37 @@
+// Muscle memory tuning constants.
+export const FAMILIARITY_CAP = 0.40
+export const FAMILIARITY_NEUTRAL = 0.20
+const EFFECTIVE_DEX_FLOOR = 0.10
+const EFFECTIVE_DEX_CAP = 0.95
+
+// Familiarity is a signed shift on top of baseDex, centred on the neutral
+// point. Below the neutral the player plays worse than usual; above, better.
+// Floors and caps preserve gameplay (never bricked, never robotic).
+export function effectiveDexFor(baseDex, familiarity = 0) {
+  const shift = (familiarity ?? 0) - FAMILIARITY_NEUTRAL
+  const raw = (baseDex ?? 0) + shift
+  return Math.max(EFFECTIVE_DEX_FLOOR, Math.min(EFFECTIVE_DEX_CAP, raw))
+}
+
+// Composite per-completion score in [0, 100]. Geometric mean of accuracy and
+// playback speed: a weakness on either axis drags the score.
+export function compositeScore(accuracy, playbackMultiplier) {
+  const a = Math.max(0, Math.min(1, accuracy ?? 0))
+  const s = Math.max(0, Math.min(1, playbackMultiplier ?? 0))
+  return Math.sqrt(a * s) * 100
+}
+
+// Maps a composite score to a 1..5 star tier. Bands chosen so 5★ is a real
+// long-term goal (≥ 90% on both axes).
+export function starTier(score) {
+  const s = score ?? 0
+  if (s >= 90) return 5
+  if (s >= 75) return 4
+  if (s >= 60) return 3
+  if (s >= 40) return 2
+  return 1
+}
+
 // Physical "distance" between two notes for difficulty modeling.
 // On a fretted instrument the cost of moving is dominated by the fret jump
 // (your hand changes position) with a smaller contribution from string skips

@@ -42,6 +42,15 @@
                   <DifficultyStars :info="difficulty.get(tab.id)" />
                 </div>
                 <span class="artist">{{ tab.artist }}</span>
+                <div v-if="tab.record" class="row-record">
+                  <span class="score" :title="`Best: ${pct(tab.record.bestAccuracy)} accuracy at ${pct(tab.record.bestPlaybackSpeed)} tempo`">
+                    {{ scoreStars(tab.record.bestStars) }} {{ Math.round(tab.record.bestScore) }}%
+                  </span>
+                  <ComfortBar :familiarity="tab.record.familiarity" />
+                </div>
+                <div v-else-if="tab.familiarity > 0" class="row-record">
+                  <ComfortBar :familiarity="tab.familiarity" />
+                </div>
               </div>
             </button>
           </li>
@@ -64,6 +73,7 @@ import { useTabDifficulty } from '@/composables/useTabDifficulty'
 import { useTabsManifest } from '@/composables/useTabsManifest'
 import { evaluateUnlock, buildUnlockContext } from '@/utils/categoryUnlocks'
 import DifficultyStars from './DifficultyStars.vue'
+import ComfortBar from './ComfortBar.vue'
 
 const store = useCharacterStore()
 const { isPlaying } = usePlaybackLock()
@@ -93,14 +103,26 @@ const visibleCategories = computed(() => {
   // counts what this character can actually play.
   const ctx = buildUnlockContext({
     tabs: playableTabs,
-    completedTabs: store.completedTabs,
+    tabRecords: store.tabRecords,
     character: store.character,
   })
 
   const categories = manifest.value.categories.map((cat) => {
     const tabsInCat = playableTabs
       .filter((t) => t.category === cat.id)
-      .map((t) => ({ ...t, completed: !!store.completedTabs[t.id] }))
+      .map((t) => {
+        const rec = store.tabRecords[t.id]
+        const completed = (rec?.completionsCount ?? 0) > 0
+        return {
+          ...t,
+          completed,
+          // Full record (best score, etc.) only when there's been a completion.
+          record: completed ? rec : null,
+          // Surface familiarity even before first completion so the comfort
+          // bar can hint at growth from failed attempts.
+          familiarity: rec?.familiarity ?? 0,
+        }
+      })
     const completedCount = tabsInCat.filter((t) => t.completed).length
     const unlocked = evaluateUnlock(cat.unlock, ctx)
     return { ...cat, tabs: tabsInCat, completedCount, unlocked }
@@ -130,6 +152,15 @@ function cardTitle(tab) {
 
 function onPick(tab) {
   playlist.append(tab)
+}
+
+function scoreStars(n) {
+  const filled = Math.max(0, Math.min(5, n ?? 0))
+  return '★'.repeat(filled) + '☆'.repeat(5 - filled)
+}
+function pct(v) {
+  if (v == null) return '—'
+  return `${Math.round(v * 100)}%`
 }
 
 // Once the manifest is loaded (singleton, may have been fetched by another
@@ -301,6 +332,18 @@ watch(
 .artist {
   font-size: 0.78rem;
   opacity: 0.7;
+}
+.row-record {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.2rem;
+}
+.score {
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--palm-leaf);
 }
 .empty {
   font-size: 0.85rem;
