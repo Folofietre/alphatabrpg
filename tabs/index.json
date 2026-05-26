@@ -213,11 +213,11 @@
       "file": "/alphatabrpg/tabs/firststeps/Misc%20Children%20-%20Old%20Macdonald%20Had%20A%20Farm.gpx"
     },
     {
-      "id": "firststeps/Misc Children - Twinkle Twinkle Little Star.gp4",
+      "id": "firststeps/Misc Children - Twinkle Twinkle Little Star.gp",
       "category": "firststeps",
       "artist": "Misc Children",
       "title": "Twinkle Twinkle Little Star",
-      "file": "/alphatabrpg/tabs/firststeps/Misc%20Children%20-%20Twinkle%20Twinkle%20Little%20Star.gp4"
+      "file": "/alphatabrpg/tabs/firststeps/Misc%20Children%20-%20Twinkle%20Twinkle%20Little%20Star.gp"
     },
     {
       "id": "classicbeginnersongs/Nirvana - Come As You Are.gp",
@@ -227,25 +227,25 @@
       "file": "/alphatabrpg/tabs/classicbeginnersongs/Nirvana%20-%20Come%20As%20You%20Are.gp"
     },
     {
-      "id": "classicbeginnersongs/Creedence Clearwater Revival - Down On The Corner.gp4",
+      "id": "classicbeginnersongs/Creedence Clearwater Revival - Down On The Corner.gp",
       "category": "classicbeginnersongs",
       "artist": "Creedence Clearwater Revival",
       "title": "Down On The Corner",
-      "file": "/alphatabrpg/tabs/classicbeginnersongs/Creedence%20Clearwater%20Revival%20-%20Down%20On%20The%20Corner.gp4"
+      "file": "/alphatabrpg/tabs/classicbeginnersongs/Creedence%20Clearwater%20Revival%20-%20Down%20On%20The%20Corner.gp"
     },
     {
-      "id": "classicbeginnersongs/ACDC - Highway To Hell.gp5",
+      "id": "classicbeginnersongs/ACDC - Highway To Hell.gp",
       "category": "classicbeginnersongs",
       "artist": "ACDC",
       "title": "Highway To Hell",
-      "file": "/alphatabrpg/tabs/classicbeginnersongs/ACDC%20-%20Highway%20To%20Hell.gp5"
+      "file": "/alphatabrpg/tabs/classicbeginnersongs/ACDC%20-%20Highway%20To%20Hell.gp"
     },
     {
-      "id": "classicbeginnersongs/Black Sabbath - Iron Man.gp4",
+      "id": "classicbeginnersongs/Black Sabbath - Iron Man.gp",
       "category": "classicbeginnersongs",
       "artist": "Black Sabbath",
       "title": "Iron Man",
-      "file": "/alphatabrpg/tabs/classicbeginnersongs/Black%20Sabbath%20-%20Iron%20Man.gp4"
+      "file": "/alphatabrpg/tabs/classicbeginnersongs/Black%20Sabbath%20-%20Iron%20Man.gp"
     },
     {
       "id": "classicbeginnersongs/Metallica - Nothing Else Matters.gp",
@@ -262,18 +262,11 @@
       "file": "/alphatabrpg/tabs/classicbeginnersongs/Oasis%20-%20Wonderwall.gp"
     },
     {
-      "id": "classicadvancedsongs/Pink Floyd - Another Brick In The Wall Part 2.gp4",
-      "category": "classicadvancedsongs",
-      "artist": "Pink Floyd",
-      "title": "Another Brick In The Wall Part 2",
-      "file": "/alphatabrpg/tabs/classicadvancedsongs/Pink%20Floyd%20-%20Another%20Brick%20In%20The%20Wall%20Part%202.gp4"
-    },
-    {
-      "id": "classicadvancedsongs/Creedence Clearwater Revival - Bad Moon Rising.gp3",
+      "id": "classicadvancedsongs/Creedence Clearwater Revival - Bad Moon Rising.gp",
       "category": "classicadvancedsongs",
       "artist": "Creedence Clearwater Revival",
       "title": "Bad Moon Rising",
-      "file": "/alphatabrpg/tabs/classicadvancedsongs/Creedence%20Clearwater%20Revival%20-%20Bad%20Moon%20Rising.gp3"
+      "file": "/alphatabrpg/tabs/classicadvancedsongs/Creedence%20Clearwater%20Revival%20-%20Bad%20Moon%20Rising.gp"
     },
     {
       "id": "classicadvancedsongs/Oasis - Dont Look Back In Anger.gp",
@@ -297,18 +290,18 @@
       "file": "/alphatabrpg/tabs/classicadvancedsongs/Nirvana%20-%20Smells%20Like%20Teen%20Spirit.gp"
     },
     {
-      "id": "classicadvancedsongs/Led Zeppelin - Stairway to Heaven.gp",
-      "category": "classicadvancedsongs",
-      "artist": "Led Zeppelin",
-      "title": "Stairway to Heaven",
-      "file": "/alphatabrpg/tabs/classicadvancedsongs/Led%20Zeppelin%20-%20Stairway%20to%20Heaven.gp"
-    },
-    {
       "id": "fingerpicking/Sungha Jung - River Flows In You.gp5",
       "category": "fingerpicking",
       "artist": "Sungha Jung",
       "title": "River Flows In You",
       "file": "/alphatabrpg/tabs/fingerpicking/Sungha%20Jung%20-%20River%20Flows%20In%20You.gp5"
+    },
+    {
+      "id": "fingerpicking/Led Zeppelin - Stairway to Heaven.gp",
+      "category": "fingerpicking",
+      "artist": "Led Zeppelin",
+      "title": "Stairway to Heaven",
+      "file": "/alphatabrpg/tabs/fingerpicking/Led%20Zeppelin%20-%20Stairway%20to%20Heaven.gp"
     },
     {
       "id": "ukrainianfirecamp/Misc Computer Games - Stalker - Campfire Song.gp5",
