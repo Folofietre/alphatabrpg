@@ -122,7 +122,9 @@ onBeforeUnmount(() => {
 })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '@/styles/mixins' as *;
+
 .settings-menu {
   position: relative;
 }
@@ -139,11 +141,12 @@ onBeforeUnmount(() => {
   color: var(--text);
   cursor: pointer;
   transition: transform 0.4s ease, background-color 0.2s, border-color 0.2s, color 0.2s;
-}
-.gear:hover {
-  background: var(--accent-bg);
-  border-color: var(--accent-border);
-  color: var(--accent);
+
+  &:hover {
+    background: var(--accent-bg);
+    border-color: var(--accent-border);
+    color: var(--accent);
+  }
 }
 .settings-menu.open .gear {
   transform: rotate(60deg);
@@ -152,24 +155,24 @@ onBeforeUnmount(() => {
   background: var(--accent-bg);
 }
 .panel {
+  @include panel-card;
   position: absolute;
   top: calc(100% + 0.5rem);
   left: 0;
   min-width: 240px;
   padding: 0.75rem 1rem 1rem;
   background: var(--bg-elevated);
-  border: 1px solid var(--panel-border);
-  border-radius: 0.5rem;
   box-shadow: var(--shadow);
   z-index: 10;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-}
-.panel h3 {
-  margin: 0;
-  font-size: 0.95rem;
-  opacity: 0.9;
+
+  h3 {
+    margin: 0;
+    font-size: 0.95rem;
+    opacity: 0.9;
+  }
 }
 .row {
   display: flex;
@@ -184,7 +187,7 @@ onBeforeUnmount(() => {
   opacity: 0.9;
 }
 .row-value {
-  font-variant-numeric: tabular-nums;
+  @include tabular;
   opacity: 0.7;
 }
 .row-help {
@@ -197,9 +200,7 @@ input[type='range'] {
   accent-color: var(--palm-leaf);
 }
 .divider {
-  height: 1px;
-  background: var(--panel-border);
-  margin: 0.25rem 0;
+  @include divider;
 }
 .danger-zone {
   display: flex;
@@ -207,10 +208,7 @@ input[type='range'] {
   gap: 0.4rem;
 }
 .zone-label {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  opacity: 0.7;
+  @include section-label;
   color: var(--faded-copper);
 }
 .zone-hint {
@@ -218,30 +216,15 @@ input[type='range'] {
   font-size: 0.78rem;
   opacity: 0.75;
   line-height: 1.35;
-}
-.zone-hint.warn {
-  color: var(--faded-copper);
-  opacity: 1;
+
+  &.warn {
+    color: var(--faded-copper);
+    opacity: 1;
+  }
 }
 .danger-btn {
+  @include button-danger;
   align-self: flex-start;
-  padding: 0.4rem 0.85rem;
-  background: var(--warn-bg);
-  border: 1px solid var(--warn-border);
-  color: var(--faded-copper);
-  border-radius: 0.4rem;
-  cursor: pointer;
-  font: inherit;
   font-size: 0.85rem;
-  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
-}
-.danger-btn:hover:not(:disabled) {
-  background: var(--faded-copper);
-  border-color: var(--faded-copper);
-  color: var(--vanilla-cream);
-}
-.danger-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 </style>

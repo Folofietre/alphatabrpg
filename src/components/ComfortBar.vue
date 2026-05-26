@@ -42,7 +42,9 @@ const title = computed(() => {
 })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '@/styles/mixins' as *;
+
 .comfort {
   display: inline-flex;
   gap: 2px;
@@ -56,12 +58,9 @@ const title = computed(() => {
   border-radius: 2px;
   background: var(--panel-strong);
   transition: background-color 0.2s;
-}
-.seg.filled.penalty {
-  background: var(--faded-copper);
-}
-.seg.filled.bonus {
-  background: var(--palm-leaf);
+
+  &.filled.penalty { background: var(--faded-copper); }
+  &.filled.bonus   { background: var(--palm-leaf); }
 }
 .neutral-mark {
   position: absolute;

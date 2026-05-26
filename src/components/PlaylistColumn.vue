@@ -113,7 +113,9 @@ function onStop() {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '@/styles/mixins' as *;
+
 .playlist-col {
   display: flex;
   flex-direction: column;
@@ -124,24 +126,23 @@ function onStop() {
   align-items: baseline;
   justify-content: space-between;
   gap: 0.5rem;
-}
-.col-header h2 {
-  margin: 0;
-  font-size: 1rem;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  opacity: 0.85;
+
+  h2 {
+    @include section-label;
+    margin: 0;
+    font-size: 1rem;
+    letter-spacing: 0.02em;
+    opacity: 0.85;
+  }
 }
 .count {
+  @include tabular;
   font-size: 0.75rem;
   opacity: 0.7;
-  font-variant-numeric: tabular-nums;
 }
 .empty {
+  @include hint-text;
   margin: 0;
-  font-size: 0.8rem;
-  opacity: 0.7;
-  font-style: italic;
   padding: 0.5rem;
 }
 .queue {
@@ -153,31 +154,32 @@ function onStop() {
   gap: 0.3rem;
 }
 .row {
+  @include panel-card;
   display: flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.45rem 0.6rem;
-  border: 1px solid var(--panel-border);
-  border-radius: 0.4rem;
-  background: var(--panel);
-  transition: border-color 0.15s, background-color 0.15s, opacity 0.15s;
-}
-.row.current {
-  border-color: var(--accent);
-  background: var(--accent-bg);
-  color: var(--accent);
-}
-.row.played {
-  opacity: 0.55;
-}
-.row.played .marker {
-  color: var(--palm-leaf);
+  transition:
+    border-color $transition-fast,
+    background-color $transition-fast,
+    opacity $transition-fast;
+
+  &.current {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+    color: var(--accent);
+  }
+  &.played {
+    opacity: 0.55;
+
+    .marker { color: var(--palm-leaf); }
+  }
 }
 .marker {
+  @include tabular;
   width: 1.25rem;
   text-align: center;
   font-size: 0.85rem;
-  font-variant-numeric: tabular-nums;
   opacity: 0.85;
   flex-shrink: 0;
 }
@@ -211,12 +213,16 @@ function onStop() {
   color: var(--text-muted);
   cursor: pointer;
   flex-shrink: 0;
-  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
-}
-.remove:hover {
-  background: var(--warn-bg);
-  border-color: var(--warn-border);
-  color: var(--faded-copper);
+  transition:
+    background-color $transition-fast,
+    color $transition-fast,
+    border-color $transition-fast;
+
+  &:hover {
+    background: var(--warn-bg);
+    border-color: var(--warn-border);
+    color: var(--faded-copper);
+  }
 }
 .bonus {
   font-size: 0.75rem;
@@ -231,32 +237,15 @@ function onStop() {
   display: flex;
   gap: 0.5rem;
   margin-top: 0.25rem;
-}
-.transport button {
-  flex: 1;
-  padding: 0.5rem 0.5rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-}
-.transport .play:not(:disabled) {
-  background: var(--accent-bg);
-  border-color: var(--accent-border);
-  color: var(--accent);
-}
-.transport .play:not(:disabled):hover {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--vanilla-cream);
-}
-.transport .stop:not(:disabled) {
-  background: var(--warn-bg);
-  border-color: var(--warn-border);
-  color: var(--faded-copper);
-}
-.transport .stop:not(:disabled):hover {
-  background: var(--faded-copper);
-  border-color: var(--faded-copper);
-  color: var(--vanilla-cream);
+
+  button {
+    flex: 1;
+    padding: 0.5rem 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+  .play  { @include button-accent; }
+  .stop  { @include button-danger; }
 }
 .actions {
   display: flex;

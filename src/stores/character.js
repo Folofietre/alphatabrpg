@@ -4,7 +4,6 @@ import {
   FAMILIARITY_CAP,
   DC_BASE,
   compositeScore,
-  starTier,
 } from '@/utils/rpgEngine'
 
 const SAVE_KEY = 'alphatab_rpg_save_v7'
@@ -47,8 +46,7 @@ const emptyTabRecord = () => ({
   lastPlayedAt: null,
   bestAccuracy: null,
   bestPlaybackSpeed: null,
-  bestScore: null,
-  bestStars: null,
+  bestScore: null,           // integer; bigger numbers on harder songs
   familiarity: 0,
   dc: null,                  // P95 beat DC, cached on first load
 })
@@ -156,19 +154,21 @@ export const useCharacterStore = defineStore('character', {
         next.completionsCount = (existing.completionsCount ?? 0) + 1
         if (!next.firstCompletedAt) next.firstCompletedAt = now
 
-        const score = compositeScore(accuracy, playbackMultiplier)
+        // Score scales with DC so harder songs are worth more, even on
+        // imperfect runs.
+        const dcForScore = next.dc ?? difficulty ?? DC_BASE
+        const score = compositeScore(accuracy, playbackMultiplier, dcForScore)
         if (next.bestScore == null || score > next.bestScore) {
           next.bestAccuracy = accuracy
           next.bestPlaybackSpeed = playbackMultiplier
           next.bestScore = score
-          next.bestStars = starTier(score)
           scorePB = true
         }
       }
 
       // Growth modulation: base delta × clamp(0.5, 1.5, skill / dc).
-      // playerSkill and dc are now in the same integer units, so the ratio is
-      // direct (no rescaling needed).
+      // playerSkill and dc are in the same integer units now, so the ratio
+      // is direct (no rescaling needed).
       const baseDelta = outcome === 'completed' ? 0.05 : 0.02
       const skill = ((this.character.dexterity ?? 0) + (this.character.speed ?? 0)) / 2
       const dc = Math.max(DC_BASE, next.dc ?? difficulty ?? DC_BASE)
@@ -187,8 +187,6 @@ export const useCharacterStore = defineStore('character', {
         familiarityAfter: next.familiarity,
         scoreBefore: existing.bestScore,
         scoreAfter: next.bestScore,
-        starsBefore: existing.bestStars,
-        starsAfter: next.bestStars,
         scorePB,
       }
     },

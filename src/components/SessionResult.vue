@@ -28,10 +28,9 @@
         <strong>
           {{ formatScore(recordDelta.scoreBefore) }} → {{ formatScore(recordDelta.scoreAfter) }}
         </strong>
-        <span class="stars">{{ scoreStars(recordDelta.starsAfter) }}</span>
       </p>
       <p v-else-if="currentScoreLine" class="score-line">
-        Score: <strong>{{ currentScoreLine }}</strong>
+        🏆 <strong>{{ currentScoreLine }}</strong>
       </p>
 
       <h4>{{ anyGain ? 'Gains & losses' : 'No changes' }}</h4>
@@ -74,7 +73,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { FAMILIARITY_NEUTRAL, compositeScore, starTier } from '@/utils/rpgEngine'
+import { FAMILIARITY_NEUTRAL } from '@/utils/rpgEngine'
 import ComfortBar from './ComfortBar.vue'
 
 const props = defineProps({
@@ -112,15 +111,13 @@ const anyGain = computed(() => {
 })
 const recordDelta = computed(() => props.result.recordDelta ?? null)
 
-// Score for this run (regardless of PB). Only meaningful on completion.
+// Score line shown when the player completed the song but did not beat
+// their previous best (a celebration line takes over in that case).
 const currentScoreLine = computed(() => {
   if (props.result.outcome !== 'completed') return null
   if (recordDelta.value?.scorePB) return null // shown via the celebration line
-  // Reconstruct from the result fields: we don't always have access to the
-  // pre/post deltas if the score didn't improve. Approximate from accuracy
-  // alone won't do, so we just show the new best if present.
   if (recordDelta.value?.scoreAfter != null) {
-    return `${formatScore(recordDelta.value.scoreAfter)} ${scoreStars(recordDelta.value.starsAfter)}`
+    return formatScore(recordDelta.value.scoreAfter)
   }
   return null
 })
@@ -145,42 +142,37 @@ function signClass(v) {
 }
 function formatScore(n) {
   if (n == null) return '—'
-  return `${Math.round(n)}%`
+  return Math.round(n).toLocaleString()
 }
-function scoreStars(n) {
-  const filled = Math.max(0, Math.min(5, n ?? 0))
-  return '★'.repeat(filled) + '☆'.repeat(5 - filled)
-}
-// silence unused-vars: compositeScore + starTier are re-exported for future use.
-void compositeScore
-void starTier
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '@/styles/mixins' as *;
+
 .session-result {
   padding: 1rem 1.25rem;
-  border-radius: 0.5rem;
+  border-radius: $radius-md;
   background: var(--accent-bg);
   border: 1px solid var(--accent-border);
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-}
-.session-result.outcome-stopped {
-  background: var(--warn-bg);
-  border-color: var(--warn-border);
-}
-.session-result.outcome-exhausted {
-  background: rgba(108, 88, 76, 0.10);
-  border-color: rgba(108, 88, 76, 0.40);
-}
-.session-result h3 {
-  margin: 0;
-}
-.session-result h4 {
-  margin: 0.5rem 0 0;
-  font-size: 0.9rem;
-  opacity: 0.85;
+
+  &.outcome-stopped {
+    background: var(--warn-bg);
+    border-color: var(--warn-border);
+  }
+  &.outcome-exhausted {
+    background: rgba(108, 88, 76, 0.10);
+    border-color: rgba(108, 88, 76, 0.40);
+  }
+
+  h3 { margin: 0; }
+  h4 {
+    margin: 0.5rem 0 0;
+    font-size: 0.9rem;
+    opacity: 0.85;
+  }
 }
 .title {
   margin: 0;
@@ -201,29 +193,24 @@ void starTier
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem 1.5rem;
+
+  li {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    font-size: 0.85rem;
+    opacity: 0.9;
+  }
+
+  strong {
+    @include tabular;
+    font-size: 1rem;
+  }
 }
-.metrics li,
-.gains li {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  font-size: 0.85rem;
-  opacity: 0.9;
-}
-.metrics strong,
-.gains strong {
-  font-size: 1rem;
-  font-variant-numeric: tabular-nums;
-}
-.gain-positive {
-  color: var(--gain);
-}
-.gain-negative {
-  color: var(--loss);
-}
-.gain-neutral {
-  opacity: 0.6;
-}
+.gain-positive { color: var(--gain); }
+.gain-negative { color: var(--loss); }
+.gain-neutral  { opacity: 0.6; }
+
 .bonus-line {
   margin: 0;
   font-size: 0.85rem;
@@ -234,17 +221,15 @@ void starTier
   padding: 0.55rem 0.75rem;
   background: var(--accent-bg);
   border: 1px solid var(--accent-border);
-  border-radius: 0.4rem;
+  border-radius: $radius-sm;
   font-size: 0.95rem;
   color: var(--palm-leaf);
   display: flex;
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
-}
-.high-score .stars {
-  font-size: 1.1rem;
-  letter-spacing: 1px;
+
+  strong { @include tabular; }
 }
 .score-line {
   margin: 0;
@@ -260,14 +245,11 @@ void starTier
   flex-wrap: wrap;
 }
 .comfort-label {
+  @include section-label;
   font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
   opacity: 0.7;
 }
-.comfort-arrow {
-  opacity: 0.7;
-}
+.comfort-arrow { opacity: 0.7; }
 .milestone {
   font-size: 0.78rem;
   font-style: italic;

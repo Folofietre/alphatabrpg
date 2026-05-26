@@ -156,4 +156,12 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  css: {
+    preprocessorOptions: {
+      scss: {
+        // Modern Sass API; silences the legacy-api deprecation warning.
+        api: 'modern-compiler',
+      },
+    },
+  },
 })

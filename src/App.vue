@@ -43,25 +43,28 @@ store.load() // synchronous: read localStorage before first render to avoid flas
 const hasCharacter = computed(() => !!store.character.instrument)
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '@/styles/mixins' as *;
+
 .app {
   padding: 0.75rem 1rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: $gap-lg;
 }
 header {
   display: grid;
   grid-template-columns: 38px 1fr 38px;
   align-items: center;
-  gap: 0.75rem;
-}
-header h1 {
-  margin: 0;
-  font-size: 1.6rem;
-  text-align: center;
-  color: var(--text-h);
-  letter-spacing: 0.02em;
+  gap: $gap-md;
+
+  h1 {
+    margin: 0;
+    font-size: 1.6rem;
+    text-align: center;
+    color: var(--text-h);
+    letter-spacing: 0.02em;
+  }
 }
 .spacer {
   width: 38px;
@@ -69,20 +72,15 @@ header h1 {
 .body {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr) 280px;
-  gap: 1.25rem;
+  gap: $gap-xl;
   align-items: start;
 }
-.main {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  min-width: 0;
-}
+.main,
 .left,
 .right {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: $gap-xl;
   min-width: 0;
 }
 @media (max-width: 1100px) {

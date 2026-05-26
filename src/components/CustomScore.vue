@@ -56,49 +56,50 @@ function onFile(file) {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '@/styles/mixins' as *;
+
 .custom-score {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: $gap-sm;
+
+  &.locked .section-header { opacity: 0.7; }
 }
 .section-header {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: $gap-sm;
   flex-wrap: wrap;
-}
-.section-header h2 {
-  margin: 0;
-  font-size: 1rem;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  opacity: 0.85;
+
+  h2 {
+    @include section-label;
+    margin: 0;
+    font-size: 1rem;
+    letter-spacing: 0.02em;
+    opacity: 0.85;
+  }
 }
 .hint {
   font-size: 0.8rem;
   opacity: 0.6;
 }
 .lock-hint {
+  @include panel-card;
   margin: 0;
   padding: 0.65rem 0.8rem;
   font-size: 0.85rem;
-  background: var(--panel);
-  border: 1px solid var(--panel-border);
-  border-radius: 0.5rem;
   font-style: italic;
   line-height: 1.4;
-}
-.lock-hint .progress {
-  display: inline-block;
-  margin-left: 0.35rem;
-  font-style: normal;
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  opacity: 0.85;
-}
-.custom-score.locked .section-header {
-  opacity: 0.7;
+
+  .progress {
+    @include tabular;
+    display: inline-block;
+    margin-left: 0.35rem;
+    font-style: normal;
+    font-weight: 600;
+    opacity: 0.85;
+  }
 }
 </style>

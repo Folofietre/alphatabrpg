@@ -60,19 +60,20 @@ const stats = computed(() => [
 ])
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '@/styles/mixins' as *;
+
 .stats {
+  @include panel-card;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   padding: 1rem;
-  border-radius: 0.5rem;
-  background: var(--panel);
-  border: 1px solid var(--panel-border);
-}
-.stats h2 {
-  margin: 0;
-  font-size: 1.1rem;
+
+  h2 {
+    margin: 0;
+    font-size: 1.1rem;
+  }
 }
 .identity {
   display: flex;
@@ -83,7 +84,6 @@ const stats = computed(() => [
 .avatar {
   width: 48px;
   height: 62px;
-  border-radius: none;
   object-fit: cover;
   background: var(--bg-surface);
   border: 1px solid var(--panel-border);
@@ -92,36 +92,30 @@ const stats = computed(() => [
   flex-shrink: 0;
 }
 .role {
+  @include section-label;
   margin: 0;
-  font-size: 0.8rem;
   opacity: 0.7;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
 }
 .stat {
   display: grid;
   grid-template-columns: 90px 1fr 60px;
   align-items: center;
   gap: 0.5rem;
-}
-.stat label {
-  font-size: 0.9rem;
-  opacity: 0.85;
+
+  label {
+    font-size: 0.9rem;
+    opacity: 0.85;
+  }
 }
 .bar {
-  height: 12px;
-  background: var(--panel-strong);
-  border-radius: 999px;
-  overflow: hidden;
+  @include progress-track(12px);
 }
 .fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--muted-olive), var(--palm-leaf));
-  transition: width 0.4s ease;
+  @include progress-fill;
 }
 .value {
+  @include tabular;
   text-align: right;
-  font-variant-numeric: tabular-nums;
   font-size: 0.85rem;
   opacity: 0.85;
 }

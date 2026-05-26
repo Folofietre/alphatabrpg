@@ -44,7 +44,7 @@
                 <span class="artist">{{ tab.artist }}</span>
                 <div v-if="tab.record" class="row-record">
                   <span class="score" :title="`Best: ${pct(tab.record.bestAccuracy)} accuracy at ${pct(tab.record.bestPlaybackSpeed)} tempo`">
-                    {{ scoreStars(tab.record.bestStars) }} {{ Math.round(tab.record.bestScore) }}%
+                    🏆 {{ tab.record.bestScore.toLocaleString() }}
                   </span>
                   <ComfortBar :familiarity="tab.record.familiarity" />
                 </div>
@@ -154,10 +154,6 @@ function onPick(tab) {
   playlist.append(tab)
 }
 
-function scoreStars(n) {
-  const filled = Math.max(0, Math.min(5, n ?? 0))
-  return '★'.repeat(filled) + '☆'.repeat(5 - filled)
-}
 function pct(v) {
   if (v == null) return '—'
   return `${Math.round(v * 100)}%`
@@ -180,7 +176,9 @@ watch(
 )
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '@/styles/mixins' as *;
+
 .library {
   display: flex;
   flex-direction: column;
@@ -192,13 +190,14 @@ watch(
   justify-content: space-between;
   gap: 0.5rem;
   flex-wrap: wrap;
-}
-.library-header h2 {
-  margin: 0;
-  font-size: 1rem;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  opacity: 0.85;
+
+  h2 {
+    @include section-label;
+    margin: 0;
+    font-size: 1rem;
+    letter-spacing: 0.02em;
+    opacity: 0.85;
+  }
 }
 .hint {
   font-size: 0.8rem;
@@ -210,13 +209,15 @@ watch(
   gap: 0.6rem;
 }
 .category {
-  border: 1px solid var(--panel-border);
-  border-radius: 0.5rem;
-  background: var(--panel);
+  @include panel-card;
   overflow: hidden;
-}
-.category.locked {
-  opacity: 0.7;
+
+  &.locked {
+    opacity: 0.7;
+
+    .category-header { cursor: default; }
+    .caret { visibility: hidden; }
+  }
 }
 .category-header {
   display: flex;
@@ -226,16 +227,10 @@ watch(
   cursor: pointer;
   user-select: none;
 }
-.category.locked .category-header {
-  cursor: default;
-}
 .caret {
   width: 0.9rem;
   font-size: 0.75rem;
   opacity: 0.7;
-}
-.category.locked .caret {
-  visibility: hidden;
 }
 .cat-title {
   flex: 1;
@@ -243,9 +238,9 @@ watch(
   font-size: 0.9rem;
 }
 .cat-progress {
+  @include tabular;
   font-size: 0.75rem;
   opacity: 0.7;
-  font-variant-numeric: tabular-nums;
 }
 .cat-lock {
   font-size: 0.9rem;
@@ -265,38 +260,12 @@ watch(
   gap: 0.35rem;
 }
 .card {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.45rem;
+  @include selectable-card;
   padding: 0.5rem 0.7rem;
-  text-align: left;
-  border: 1px solid transparent;
-  border-radius: 0.4rem;
-  background: var(--bg-elevated);
-  color: var(--text);
-  cursor: pointer;
-  width: 100%;
-  font: inherit;
-  transition: border-color 0.15s, background-color 0.15s, color 0.15s, transform 0.1s;
-}
-.card:hover:not(:disabled) {
-  border-color: var(--accent-border);
-  background: var(--accent-bg);
-  color: var(--accent);
-}
-.card:active:not(:disabled) {
-  transform: scale(0.98);
-}
-.card.queued {
-  border-color: var(--accent);
-  background: var(--accent-bg);
-}
-.card.completed .check {
-  color: var(--palm-leaf);
-}
-.card:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+  gap: 0.45rem;
+
+  &.queued { @include selectable-card-active; }
+  &.completed .check { color: var(--palm-leaf); }
 }
 .check {
   flex-shrink: 0;
@@ -341,8 +310,8 @@ watch(
   margin-top: 0.2rem;
 }
 .score {
+  @include tabular;
   font-size: 0.78rem;
-  font-variant-numeric: tabular-nums;
   color: var(--palm-leaf);
 }
 .empty {

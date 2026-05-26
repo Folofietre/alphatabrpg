@@ -68,13 +68,19 @@ Key dependencies:
 ```
 src/
 ├── main.js                       # Bootstrap Vue + Pinia
+├── style.scss                    # Global tokens (CSS custom properties) + base resets
 ├── App.vue                       # 3-column layout (playlist / player / library)
+├── styles/
+│   ├── _tokens.scss              # SCSS variables (spacing, radii, transitions) — compile-time only
+│   └── _mixins.scss              # Reusable mixins: panel-card, button-base, button-accent,
+│                                 # button-danger, section-label, hint-text, progress-track, …
 ├── stores/
-│   └── character.js              # Pinia store: character, stats, completedTabs, save/load
+│   └── character.js              # Pinia store: character, stats, tabRecords, save/load
 ├── composables/
 │   ├── useAlphaTab.js            # Encapsulates the AlphaTabApi lifecycle and per-beat logic
 │   ├── useSettings.js            # Volume + backing volume settings (persisted)
 │   ├── usePlaybackLock.js        # Shared "is the player currently playing?" flag
+│   ├── usePlayerActions.js       # Exposes play/stop to non-ScorePlayer components
 │   ├── useTabSelection.js        # Channel between TabLibrary/CustomScore and ScorePlayer
 │   ├── useTabsManifest.js        # Singleton fetch of /tabs/index.json
 │   ├── useTabDifficulty.js       # Background parse of every tab → difficulty stars + playability
@@ -82,21 +88,53 @@ src/
 ├── components/
 │   ├── CharacterSetup.vue        # Cold-start "create your musician" overlay
 │   ├── CharacterStats.vue        # Avatar + 3 stat bars
-│   ├── ScorePlayer.vue           # alphaTab host + Play/Stop + Stamina bar
+│   ├── ScorePlayer.vue           # alphaTab host + Stamina bar (transport lives in PlaylistColumn)
 │   ├── SettingsMenu.vue          # Gear button + volume sliders + reset
 │   ├── TabLibrary.vue            # Foldable categories of built-in tabs
 │   ├── CustomScore.vue           # Locked dropzone (unlocks after 100% completion)
 │   ├── FileDropzone.vue          # Reusable file input + drag-and-drop
-│   ├── PlaylistColumn.vue        # Left column queue with ✓ / ▶ markers
-│   ├── SessionResult.vue         # Post-session panel (gains, penalties, streak bonus)
-│   └── DifficultyStars.vue       # Small reusable 1–5 stars component
+│   ├── PlaylistColumn.vue        # Left column queue + Play/Stop transport
+│   ├── SessionResult.vue         # Post-session panel (gains, penalties, streak bonus, high score)
+│   ├── DifficultyStars.vue       # Small reusable 1–5 stars component
+│   └── ComfortBar.vue            # Signed per-tab familiarity bar with neutral marker
 └── utils/
-    ├── rpgEngine.js              # Pure functions: rollBeatAccuracy, beatExhaustion,
-    │                             # scoreOnsetRate, analyzeScore, physicalDistance
+    ├── rpgEngine.js              # Pure functions: beatDC, scoreDC, rollBeatAccuracy,
+    │                             # beatExhaustion, scoreOnsetRate, analyzeScore,
+    │                             # physicalDistance, effectiveDexFor, compositeScore
     ├── instruments.js            # MIDI program ranges, instrument metadata,
     │                             # findPlayableTrack, scoreIsPlayable
     └── categoryUnlocks.js        # Evaluate `unlock` rules from categories.json
 ```
+
+---
+
+## Styling
+
+Two layers, kept separate by purpose:
+
+1. **Runtime tokens — CSS custom properties.** All colors, the palette, role aliases (`--bg`, `--panel`, `--accent`, `--warn`…), shadows, fonts. Defined once in [src/style.scss](src/style.scss). Used everywhere through `var(--foo)` so the inspector lets you tweak them live and they're themeable without a rebuild.
+
+2. **Compile-time mixins — SCSS.** Reusable visual patterns ([src/styles/_mixins.scss](src/styles/_mixins.scss)): `panel-card`, `nested-card`, `button-base` / `button-accent` / `button-danger`, `section-label`, `hint-text`, `tabular`, `selectable-card`, `progress-track` / `progress-fill`, `divider`. Tokens that need arithmetic (spacing scale, radius, transitions) live in [src/styles/_tokens.scss](src/styles/_tokens.scss) and are forwarded by `_mixins.scss`.
+
+Components use them like so:
+
+```vue
+<style scoped lang="scss">
+@use '@/styles/mixins' as *;
+
+.card {
+  @include selectable-card;
+  padding: 0.65rem 0.8rem;
+
+  &.active { @include selectable-card-active; }
+}
+.danger-btn { @include button-danger; }
+</style>
+```
+
+The `@` alias resolves to `src/`, matching the JS import alias. Vite handles SCSS through `sass` (`devDependency`); the `modern-compiler` API is enabled in [vite.config.js](vite.config.js) under `css.preprocessorOptions.scss`.
+
+When adding a new visual pattern that's used by ≥ 2 components, extract a mixin to `_mixins.scss` rather than duplicating CSS. Conversely, one-off styles stay scoped to their `.vue` file.
 
 ---
 

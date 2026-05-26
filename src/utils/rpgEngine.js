@@ -25,22 +25,20 @@ export function effectiveDexFor(baseDex, familiarity = 0) {
 // Per-completion composite score (display)
 // ---------------------------------------------------------------------------
 
-// Geometric mean of accuracy and playback speed in [0, 100]. A weakness on
-// either axis drags the score.
-export function compositeScore(accuracy, playbackMultiplier) {
+// Multiplier that scales the geometric-mean performance × song DC into a
+// plain integer score. Chosen so a perfect run on an easy song (DC ~60)
+// reads around 1000, and a perfect run on a very hard song (DC ~5000)
+// reads around 90 000.
+const SCORE_SCALE = 18
+
+// Geometric mean of accuracy and playback speed, scaled by the song's DC.
+// Unbounded integer — a "great run on a hard song" can beat a "perfect run on
+// an easy song", which is the whole point of leaderboards on this game.
+export function compositeScore(accuracy, playbackMultiplier, dc = DC_BASE) {
   const a = Math.max(0, Math.min(1, accuracy ?? 0))
   const s = Math.max(0, Math.min(1, playbackMultiplier ?? 0))
-  return Math.sqrt(a * s) * 100
-}
-
-// Maps a composite score to a 1..5 star tier.
-export function starTier(score) {
-  const s = score ?? 0
-  if (s >= 90) return 5
-  if (s >= 75) return 4
-  if (s >= 60) return 3
-  if (s >= 40) return 2
-  return 1
+  const d = Math.max(DC_BASE, dc ?? DC_BASE)
+  return Math.round(Math.sqrt(a * s) * d * SCORE_SCALE)
 }
 
 // ---------------------------------------------------------------------------

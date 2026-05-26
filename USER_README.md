@@ -124,7 +124,13 @@ Tabs are grouped into **categories** (First Steps, Solo Practice, Fingerpicking,
 - 🔓 **Unlocked** — fold open, click to queue.
 - 🔒 **Locked** — the unlock hint tells you what to grind ("Complete every First Steps track", "Reach 800 Dexterity"…). Categories with no hint are hidden entirely until unlocked.
 
-Each tab shows a **difficulty rating** (1–5 stars) based on its DC, plus a **high-score record** once you've completed it at least once. The high score is a composite of accuracy × effective tempo: 5★ requires near-perfection on *both* axes — long-term goal even after first completion.
+Each tab shows a **difficulty rating** (1–5 stars) based on its DC. Once you've completed a tab at least once, a **🏆 high score** appears next to it. The high score is a single integer that combines your accuracy, your effective tempo, and the song's difficulty:
+
+- An easy tune mastered → roughly **1 000**.
+- A medium song nailed → several thousand.
+- A virtuoso piece pulled off → tens of thousands.
+
+There's no cap — chasing a higher number on a tab you've already cleared is a long-term goal. Hard songs reward you with bigger numbers even on imperfect runs.
 
 ---
 

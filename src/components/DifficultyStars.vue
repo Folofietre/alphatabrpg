@@ -29,7 +29,9 @@ const title = computed(() => {
 })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '@/styles/mixins' as *;
+
 .difficulty {
   display: inline-flex;
   align-items: center;
@@ -37,19 +39,15 @@ const title = computed(() => {
   font-size: 0.8rem;
   line-height: 1;
   letter-spacing: 0.5px;
+
+  &.loading .star { opacity: 0.5; }
+  &.error   .star { display: none; }
 }
 .star {
   color: var(--panel-border);
   transition: color 0.2s;
-}
-.star.filled {
-  color: var(--palm-leaf);
-}
-.difficulty.loading .star {
-  opacity: 0.5;
-}
-.difficulty.error .star {
-  display: none;
+
+  &.filled { color: var(--palm-leaf); }
 }
 .note {
   margin-left: 2px;

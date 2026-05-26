@@ -10,7 +10,9 @@
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
+@use '@/styles/mixins' as *;
+
 .legal-footer {
   text-align: center;
   font-size: 0.8rem;

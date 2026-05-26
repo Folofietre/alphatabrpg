@@ -58,39 +58,47 @@ function onPicked(e) {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@use '@/styles/mixins' as *;
+
 .dropzone {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.25rem;
+  gap: $gap-xs;
   padding: 1.5rem;
   border: 2px dashed var(--panel-border);
-  border-radius: 0.5rem;
+  border-radius: $radius-md;
   background: var(--panel);
   color: var(--text);
   cursor: pointer;
   text-align: center;
-  transition: border-color 0.2s, background-color 0.2s, opacity 0.2s, color 0.2s;
-}
-.dropzone:hover:not(.disabled) {
-  border-color: var(--accent-border);
-  color: var(--accent);
-}
-.dropzone.active {
-  border-color: var(--accent);
-  background-color: var(--accent-bg);
-  color: var(--accent);
-}
-.dropzone.disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-.dropzone small {
-  display: block;
-  opacity: 0.6;
-  font-size: 0.75rem;
+  transition:
+    border-color 0.2s,
+    background-color 0.2s,
+    opacity 0.2s,
+    color 0.2s;
+
+  &:hover:not(.disabled) {
+    border-color: var(--accent-border);
+    color: var(--accent);
+  }
+  &.active {
+    border-color: var(--accent);
+    background-color: var(--accent-bg);
+    color: var(--accent);
+  }
+  &.disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  small {
+    display: block;
+    opacity: 0.6;
+    font-size: 0.75rem;
+  }
 }
 .file-input {
   display: none;
