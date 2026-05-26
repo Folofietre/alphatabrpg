@@ -56,10 +56,10 @@
         "type": "any_of",
         "rules": [
           { "type": "all_completed", "category": "classicsongs" },
-          { "type": "stat_threshold", "stat": "dexterity", "min": 0.8 }
+          { "type": "stat_threshold", "stat": "dexterity", "min": 800 }
         ]
       },
-      "hint": "Complete every Classic Song track, or reach 80% Dexterity."
+      "hint": "Complete every Classic Song track, or reach 800 Dexterity."
     },
     {
       "id": "ukrainianfirecamp",

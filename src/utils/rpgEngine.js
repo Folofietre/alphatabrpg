@@ -1,28 +1,39 @@
-// Muscle memory tuning constants.
+// ---------------------------------------------------------------------------
+// Muscle memory & tuning constants
+// ---------------------------------------------------------------------------
+
 export const FAMILIARITY_CAP = 0.40
 export const FAMILIARITY_NEUTRAL = 0.20
-const EFFECTIVE_DEX_FLOOR = 0.10
-const EFFECTIVE_DEX_CAP = 0.95
 
-// Familiarity is a signed shift on top of baseDex, centred on the neutral
-// point. Below the neutral the player plays worse than usual; above, better.
-// Floors and caps preserve gameplay (never bricked, never robotic).
+// Comfort is a multiplicative modifier on baseDex.
+// At familiarity 0    → effectiveDex = baseDex × 0.80 (penalty)
+// At familiarity 0.20 → effectiveDex = baseDex × 1.00 (neutral)
+// At familiarity 0.40 → effectiveDex = baseDex × 1.20 (bonus)
+const COMFORT_RANGE = 0.20
+
+// Lower bound on effective dex to avoid divide-by-zero / silly maths even if
+// the player rolls bottom-of-the-barrel stats on an unfamiliar score.
+const EFFECTIVE_DEX_FLOOR = 10
+
 export function effectiveDexFor(baseDex, familiarity = 0) {
-  const shift = (familiarity ?? 0) - FAMILIARITY_NEUTRAL
-  const raw = (baseDex ?? 0) + shift
-  return Math.max(EFFECTIVE_DEX_FLOOR, Math.min(EFFECTIVE_DEX_CAP, raw))
+  const f = familiarity ?? 0
+  const comfortMod = 1 + (f - FAMILIARITY_NEUTRAL) * (COMFORT_RANGE / FAMILIARITY_NEUTRAL)
+  return Math.max(EFFECTIVE_DEX_FLOOR, (baseDex ?? 0) * comfortMod)
 }
 
-// Composite per-completion score in [0, 100]. Geometric mean of accuracy and
-// playback speed: a weakness on either axis drags the score.
+// ---------------------------------------------------------------------------
+// Per-completion composite score (display)
+// ---------------------------------------------------------------------------
+
+// Geometric mean of accuracy and playback speed in [0, 100]. A weakness on
+// either axis drags the score.
 export function compositeScore(accuracy, playbackMultiplier) {
   const a = Math.max(0, Math.min(1, accuracy ?? 0))
   const s = Math.max(0, Math.min(1, playbackMultiplier ?? 0))
   return Math.sqrt(a * s) * 100
 }
 
-// Maps a composite score to a 1..5 star tier. Bands chosen so 5★ is a real
-// long-term goal (≥ 90% on both axes).
+// Maps a composite score to a 1..5 star tier.
 export function starTier(score) {
   const s = score ?? 0
   if (s >= 90) return 5
@@ -32,12 +43,10 @@ export function starTier(score) {
   return 1
 }
 
-// Physical "distance" between two notes for difficulty modeling.
-// On a fretted instrument the cost of moving is dominated by the fret jump
-// (your hand changes position) with a smaller contribution from string skips
-// (your finger crosses strings without moving your hand). On instruments
-// without TAB data (piano, raw MIDI) we fall back to the absolute MIDI
-// interval, which is a reasonable proxy for hand travel on a keyboard.
+// ---------------------------------------------------------------------------
+// Physical distance between two notes
+// ---------------------------------------------------------------------------
+
 const STRING_SKIP_WEIGHT = 0.5
 
 function hasFretboardInfo(note) {
@@ -62,6 +71,10 @@ export function physicalDistance(prevNote, note) {
   return Math.abs(midiOf(note) - midiOf(prevNote))
 }
 
+// ---------------------------------------------------------------------------
+// Duration helpers
+// ---------------------------------------------------------------------------
+
 function realDurationSeconds(durationValue, effectiveBpm) {
   const v = durationValue ?? 4
   const quarterSeconds = 60 / Math.max(1, effectiveBpm)
@@ -70,16 +83,16 @@ function realDurationSeconds(durationValue, effectiveBpm) {
     : quarterSeconds * (4 / Math.max(1, v))
 }
 
-// Onsets per minute for a single beat at a given (raw) score tempo.
+// ---------------------------------------------------------------------------
+// Onset rate (drives Speed-vs-tempo playback multiplier)
+// ---------------------------------------------------------------------------
+
 function beatOnsetRate(beat, bpm) {
   const v = beat.duration?.value ?? 4
   const factor = v < 0 ? 1 / (4 * Math.abs(v)) : v / 4
   return bpm * factor
 }
 
-// 95th percentile of onset rates across beats with notes. Used to derive the
-// playback multiplier given the character's Speed stat. When `track` is not
-// provided, falls back to the first track of the score.
 export function scoreOnsetRate(score, track = null) {
   if (!score) return 120
   const t = track ?? score.tracks?.[0]
@@ -103,31 +116,52 @@ export function scoreOnsetRate(score, track = null) {
   return rates[idx]
 }
 
-export function rollBeatAccuracy(dexterity, beat, prevNote = null, effectiveBpm = 120) {
-  const notes = beat.notes ?? []
-  if (notes.length === 0) return { success: true, semitones: 0, lastNote: prevNote }
+// ---------------------------------------------------------------------------
+// Per-beat Difficulty Class (DC) and per-beat roll
+// ---------------------------------------------------------------------------
+
+// Baseline DC: a single quarter note, no jump, comfortable tempo. The player's
+// effective dex is compared against the beat DC via a Bradley-Terry roll —
+// chance = effectiveDex / (effectiveDex + DC). At parity, 50% chance.
+export const DC_BASE = 60
+
+export function beatDC(beat, prevNote = null, effectiveBpm = 120) {
+  const notes = beat?.notes ?? []
+  if (notes.length === 0) return 0
 
   const seconds = realDurationSeconds(beat.duration?.value, effectiveBpm)
+  // 0 (very fast) … 1 (very long). Long notes are easy.
   const ease = Math.max(0, Math.min(1, (seconds - 0.05) / 0.35))
 
   let maxDistance = 0
-  let lastNote = prevNote
   for (const note of notes) {
     const d = physicalDistance(prevNote, note)
     if (d > maxDistance) maxDistance = d
-    lastNote = note
   }
 
-  // Distances ≤ 2 are free (local position shifts on a fretboard, ≤ 2 semitones
-  // on a keyboard). Beyond that, penalty scales linearly and caps at 0.4.
-  const distancePenalty = Math.min(0.4, Math.max(0, maxDistance - 2) / 30)
-  const chordPenalty = Math.max(0, notes.length - 1) * 0.08
-  const speedPenalty = (1 - ease) * 0.45
+  const distanceFactor = 1 + Math.max(0, maxDistance - 2) / 8
+  const chordFactor = 1 + Math.max(0, notes.length - 1) * 0.35
+  const speedFactor = 1 + (1 - ease) * 2
 
-  const skill = Math.min(1, dexterity + ease * 0.5)
-  const threshold = skill - distancePenalty - chordPenalty - speedPenalty
+  return DC_BASE * distanceFactor * chordFactor * speedFactor
+}
 
-  const success = Math.random() < threshold
+export function rollBeatAccuracy(effectiveDex, beat, prevNote = null, effectiveBpm = 120) {
+  const notes = beat?.notes ?? []
+  if (notes.length === 0) return { success: true, semitones: 0, lastNote: prevNote }
+
+  let lastNote = prevNote
+  for (const note of notes) lastNote = note
+
+  const dc = beatDC(beat, prevNote, effectiveBpm)
+  if (dc <= 0) return { success: true, semitones: 0, lastNote }
+
+  // Bradley-Terry: ratio of stat to stat+DC. Naturally asymptotic — never
+  // hits 0% nor 100%, so randomness is always preserved.
+  const dex = Math.max(0, effectiveDex ?? 0)
+  const chance = dex / (dex + dc)
+  const success = Math.random() < chance
+
   const semitones = success
     ? 0
     : (Math.random() > 0.5 ? 1 : -1) * (1 + Math.floor(Math.random() * 3))
@@ -135,13 +169,16 @@ export function rollBeatAccuracy(dexterity, beat, prevNote = null, effectiveBpm 
   return { success, semitones, lastNote }
 }
 
+// ---------------------------------------------------------------------------
+// Endurance cost per beat
+// ---------------------------------------------------------------------------
+
 export function beatExhaustion(beat, prevNote = null, effectiveBpm = 120) {
-  const notes = beat.notes ?? []
+  const notes = beat?.notes ?? []
   if (notes.length === 0) return 0
 
   const seconds = realDurationSeconds(beat.duration?.value, effectiveBpm)
   // Baseline: a quarter note at 120 BPM (0.5s) costs 1.0.
-  // Faster notes cost more, longer notes cost less. Sqrt softens the curve.
   const speedFactor = Math.sqrt(0.5 / Math.max(0.05, seconds))
 
   let maxDistance = 0
@@ -149,50 +186,73 @@ export function beatExhaustion(beat, prevNote = null, effectiveBpm = 120) {
     const d = physicalDistance(prevNote, note)
     if (d > maxDistance) maxDistance = d
   }
-  // Distances up to 2 are free; 12 (a full hand jump) roughly doubles cost.
   const distanceFactor = 1 + Math.max(0, maxDistance - 2) / 12
-
-  // Each extra note in a chord adds 15%.
   const chordFactor = 1 + Math.max(0, notes.length - 1) * 0.15
 
   return speedFactor * distanceFactor * chordFactor
 }
 
-// Heuristic 0..1 difficulty for a score, optionally scoped to a specific track.
-// Considers tempo, biggest physical jump between notes, and total note count.
-export function analyzeScore(score, track = null) {
-  if (!score) return { estimatedDifficulty: 0.5, noteCount: 0, avgBpm: 120 }
+// ---------------------------------------------------------------------------
+// Score-level Difficulty Class (P95 over all beats at the raw score tempo)
+// Used both for the library star badge and the muscle-memory growth modulator.
+// ---------------------------------------------------------------------------
 
+export function scoreDC(score, track = null) {
+  if (!score) return DC_BASE
   const t = track ?? score.tracks?.[0]
-  if (!t) return { estimatedDifficulty: 0.5, noteCount: 0, avgBpm: 120 }
+  if (!t) return DC_BASE
+  const bpm = score.tempo ?? 120
 
-  let noteCount = 0
-  let maxDistance = 0
+  const dcs = []
   let prevNote = null
-
   for (const staff of t.staves ?? []) {
     for (const bar of staff.bars ?? []) {
       for (const voice of bar.voices ?? []) {
         for (const beat of voice.beats ?? []) {
-          for (const note of beat.notes ?? []) {
-            const d = physicalDistance(prevNote, note)
-            if (d > maxDistance) maxDistance = d
-            prevNote = note
-            noteCount++
-          }
+          if (!(beat.notes?.length)) continue
+          const dc = beatDC(beat, prevNote, bpm)
+          if (dc > 0) dcs.push(dc)
+          for (const n of beat.notes) prevNote = n
+        }
+      }
+    }
+  }
+  if (dcs.length === 0) return DC_BASE
+  dcs.sort((a, b) => a - b)
+  const idx = Math.floor(0.95 * (dcs.length - 1))
+  return dcs[idx]
+}
+
+// ---------------------------------------------------------------------------
+// Score analysis (display): map scoreDC to a 0..1 difficulty rating + meta
+// ---------------------------------------------------------------------------
+
+// A scoreDC at DC_BASE → 0 (trivial). Anything ≥ DC_BASE + 540 → 1 (max stars).
+// 540 is roughly the spread between a baseline beat and a "shred" beat (chord
+// of 3 sixteenth notes with octave jumps) at the same tempo.
+const DC_DIFFICULTY_SPAN = 540
+
+export function analyzeScore(score, track = null) {
+  if (!score) return { estimatedDifficulty: 0.5, dc: DC_BASE, noteCount: 0, avgBpm: 120 }
+
+  const t = track ?? score.tracks?.[0]
+  if (!t) return { estimatedDifficulty: 0.5, dc: DC_BASE, noteCount: 0, avgBpm: 120 }
+
+  let noteCount = 0
+  for (const staff of t.staves ?? []) {
+    for (const bar of staff.bars ?? []) {
+      for (const voice of bar.voices ?? []) {
+        for (const beat of voice.beats ?? []) {
+          noteCount += beat.notes?.length ?? 0
         }
       }
     }
   }
 
-  const avgBpm = score.tempo ?? 120
-  // Distance normalisation: 24 was the old "octave x2" reference for MIDI
-  // intervals; in fretboard units, 24 ≈ "two full hand jumps + a string skip"
-  // — still a sensible difficulty ceiling.
-  const estimatedDifficulty = Math.min(
-    1.0,
-    (avgBpm / 200) * 0.4 + (maxDistance / 24) * 0.4 + (noteCount / 500) * 0.2,
+  const dc = scoreDC(score, t)
+  const estimatedDifficulty = Math.max(
+    0,
+    Math.min(1, (dc - DC_BASE) / DC_DIFFICULTY_SPAN),
   )
-
-  return { estimatedDifficulty, noteCount, avgBpm }
+  return { estimatedDifficulty, dc, noteCount, avgBpm: score.tempo ?? 120 }
 }

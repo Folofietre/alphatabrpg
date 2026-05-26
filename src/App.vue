@@ -19,6 +19,9 @@
         <TabLibrary />
       </aside>
     </div>
+    <footer>
+      <LegalFooter />
+    </footer>
   </main>
 </template>
 
@@ -32,6 +35,7 @@ import TabLibrary from '@/components/TabLibrary.vue'
 import CustomScore from '@/components/CustomScore.vue'
 import CharacterSetup from '@/components/CharacterSetup.vue'
 import PlaylistColumn from '@/components/PlaylistColumn.vue'
+import LegalFooter from '@/components/LegalFooter.vue'
 
 const store = useCharacterStore()
 store.load() // synchronous: read localStorage before first render to avoid flash

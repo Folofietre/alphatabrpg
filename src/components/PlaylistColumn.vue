@@ -41,6 +41,23 @@
       Streak ×{{ consecutive }} — next gain bonus: ×{{ bonusMultiplier.toFixed(2) }}
     </div>
 
+    <div v-if="length > 0" class="transport">
+      <button
+        type="button"
+        class="play"
+        :disabled="isPlaying"
+        :title="isPlaying ? 'Already playing' : 'Start playing'"
+        @click="onPlay"
+      >▶ Play</button>
+      <button
+        type="button"
+        class="stop"
+        :disabled="!isPlaying"
+        :title="isPlaying ? 'Stop and end the session' : 'Nothing to stop'"
+        @click="onStop"
+      >■ Stop</button>
+    </div>
+
     <div v-if="length > 0" class="actions">
       <button
         type="button"
@@ -56,8 +73,12 @@
 <script setup>
 import { computed } from 'vue'
 import { usePlaylist } from '@/composables/usePlaylist'
+import { usePlaybackLock } from '@/composables/usePlaybackLock'
+import { usePlayerActions } from '@/composables/usePlayerActions'
 
 const playlist = usePlaylist()
+const { isPlaying } = usePlaybackLock()
+const playerActions = usePlayerActions()
 
 const queue = computed(() => playlist.queue.value)
 const length = computed(() => playlist.length.value)
@@ -82,6 +103,13 @@ function removeAt(idx) {
 
 function clear() {
   playlist.clear()
+}
+
+function onPlay() {
+  playerActions.play()
+}
+function onStop() {
+  playerActions.stop()
 }
 </script>
 
@@ -198,6 +226,37 @@ function clear() {
   color: var(--accent);
   text-align: center;
   font-weight: 500;
+}
+.transport {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+.transport button {
+  flex: 1;
+  padding: 0.5rem 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.transport .play:not(:disabled) {
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+.transport .play:not(:disabled):hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--vanilla-cream);
+}
+.transport .stop:not(:disabled) {
+  background: var(--warn-bg);
+  border-color: var(--warn-border);
+  color: var(--faded-copper);
+}
+.transport .stop:not(:disabled):hover {
+  background: var(--faded-copper);
+  border-color: var(--faded-copper);
+  color: var(--vanilla-cream);
 }
 .actions {
   display: flex;

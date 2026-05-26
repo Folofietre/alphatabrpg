@@ -6,7 +6,7 @@ import {
   rollBeatAccuracy,
   beatExhaustion,
   scoreOnsetRate,
-  analyzeScore,
+  scoreDC,
   effectiveDexFor,
 } from '@/utils/rpgEngine'
 import { findPlayableTrack, INSTRUMENT_META } from '@/utils/instruments'
@@ -30,7 +30,7 @@ export function useAlphaTab(containerRef) {
   let lastNote = null       // last Note resolved by a roll (drives physicalDistance chaining)
   let playbackMultiplier = 1 // computed at scoreLoaded from speed stat vs score onset rate
   let currentFamiliarity = 0 // snapshotted from tabRecords on scoreLoaded
-  let currentDifficulty = null // analyzed once per load, forwarded to applySessionXP
+  let currentDifficulty = null // P95 DC of the current score, forwarded to applySessionXP
 
   function applyTransposition(semitones) {
     if (!api.value || semitones === currentTransposition) return
@@ -213,14 +213,12 @@ export function useAlphaTab(containerRef) {
       api.value.playbackSpeed = playbackMultiplier
       api.value.masterVolume = volume.value
 
-      // Snapshot per-tab muscle memory + difficulty for the upcoming run.
-      // Use a cached estimatedDifficulty from the record if we already have it,
-      // otherwise compute fresh via analyzeScore (the result is persisted on
-      // first session via recordTabSession).
+      // Snapshot per-tab muscle memory + score DC for the upcoming run.
+      // Use the cached DC from the record if available, otherwise compute via
+      // scoreDC (the result is persisted on first session via recordTabSession).
       const record = currentTabId ? store.tabRecords?.[currentTabId] : null
       currentFamiliarity = record?.familiarity ?? 0
-      currentDifficulty =
-        record?.estimatedDifficulty ?? analyzeScore(score, match).estimatedDifficulty
+      currentDifficulty = record?.dc ?? scoreDC(score, match)
 
       isReady.value = true
       sessionStats.value = { totalBeats: 0, successBeats: 0 }
@@ -243,7 +241,7 @@ export function useAlphaTab(containerRef) {
       if (playlist.consumeAutoPlay()) {
         // Defer one tick to give alphaTab time to settle internally.
         setTimeout(() => {
-          if (!isPlaying.value) playPause()
+          if (!isPlaying.value) play()
         }, 0)
       }
     })
@@ -318,17 +316,16 @@ export function useAlphaTab(containerRef) {
     api.value.load(url)
   }
 
-  function playPause() {
+  // Start playback. No-op when already playing. There is no pause action by
+  // design: the only way to interrupt a session is Stop.
+  function play() {
     if (!api.value) return
-    // Starting from a paused state with a queued playlist marks the start of
-    // a new run (stamina resets here so the first song of the run has full
-    // stamina, but subsequent chained songs do not).
-    const isStarting = !isPlaying.value
-    if (isStarting && playlist.length.value > 0 && !playlist.isRunning.value) {
+    if (isPlaying.value) return
+    if (playlist.length.value > 0 && !playlist.isRunning.value) {
       store.resetStamina()
       playlist.markRunStarted()
     }
-    api.value.playPause()
+    api.value.play()
   }
 
   function stop() {
@@ -363,7 +360,7 @@ export function useAlphaTab(containerRef) {
     init,
     loadFile,
     loadUrl,
-    playPause,
+    play,
     stop,
     rewind,
     clearSessionResult,

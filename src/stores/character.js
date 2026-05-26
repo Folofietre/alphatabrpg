@@ -2,14 +2,16 @@ import { defineStore } from 'pinia'
 import { SUPPORTED_INSTRUMENTS } from '@/utils/instruments'
 import {
   FAMILIARITY_CAP,
+  DC_BASE,
   compositeScore,
   starTier,
 } from '@/utils/rpgEngine'
 
-const SAVE_KEY = 'alphatab_rpg_save_v6'
+const SAVE_KEY = 'alphatab_rpg_save_v7'
 // Older save versions from earlier prototypes. We wipe them on load — no
 // migration during development, schema changes force a fresh character.
 const LEGACY_KEYS = [
+  'alphatab_rpg_save_v6',
   'alphatab_rpg_save_v5',
   'alphatab_rpg_save_v4',
   'alphatab_rpg_save_v3',
@@ -17,20 +19,24 @@ const LEGACY_KEYS = [
   'alphatab_rpg_save',
 ]
 
-const SPEED_CAP = 600
-const ENDURANCE_CAP = 500
-
+// All three stats are now uncapped integers. Floors stop penalties from
+// dropping a player below their starting position; there is no upper bound.
 const SPEED_FLOOR = 30
-const DEX_FLOOR = 0.20
+const DEX_FLOOR = 50          // also the minimum random starter
+const DEX_ROLL_MAX = 100      // max random starter
 const ENDURANCE_FLOOR = 30
 
 const MIN_BEATS_FOR_OUTCOME = 10
+
+function rollInitialDexterity() {
+  return Math.floor(DEX_FLOOR + Math.random() * (DEX_ROLL_MAX - DEX_FLOOR + 1))
+}
 
 const defaultCharacter = () => ({
   name: 'Musician',
   instrument: '',           // empty until CharacterSetup completes
   speed: SPEED_FLOOR,
-  dexterity: DEX_FLOOR,
+  dexterity: rollInitialDexterity(),
   endurance: ENDURANCE_FLOOR,
 })
 
@@ -44,7 +50,7 @@ const emptyTabRecord = () => ({
   bestScore: null,
   bestStars: null,
   familiarity: 0,
-  estimatedDifficulty: null,
+  dc: null,                  // P95 beat DC, cached on first load
 })
 
 function gainsFor(outcome, accuracy) {
@@ -52,19 +58,21 @@ function gainsFor(outcome, accuracy) {
   if (outcome === 'completed') {
     return {
       speed: 10,
-      dexterity: accuracy > 0.7 ? 0.020 : 0.008,
+      // Premium dex gain on clean runs (>70% accuracy), modest gain otherwise.
+      dexterity: accuracy > 0.7 ? 10 : 4,
       endurance: 5,
     }
   }
   if (outcome === 'stopped') {
-    return { speed: 1, dexterity: 0.005, endurance: -2 }
+    return { speed: 1, dexterity: 1, endurance: -2 }
   }
   // exhausted
   return { speed: 0, dexterity: 0, endurance: -5 }
 }
 
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value))
+// Lower-bound only — stats are uncapped.
+function floor(value, min) {
+  return Math.max(min, value)
 }
 
 export const useCharacterStore = defineStore('character', {
@@ -72,9 +80,6 @@ export const useCharacterStore = defineStore('character', {
     character: defaultCharacter(),
     history: [],
     notesPlayed: 0,
-    // tabId → { attemptsCount, completionsCount, firstCompletedAt, lastPlayedAt,
-    //          bestAccuracy, bestPlaybackSpeed, bestScore, bestStars,
-    //          familiarity, estimatedDifficulty }
     tabRecords: {},
   }),
 
@@ -130,9 +135,8 @@ export const useCharacterStore = defineStore('character', {
     },
 
     // Single source of truth for per-tab record updates. Bumps counts, tracks
-    // best score on completion, caches estimatedDifficulty, and grows
-    // familiarity modulated by the player's skill vs. song difficulty.
-    // Returns a delta object describing what changed (for SessionResult UI).
+    // best score on completion, caches the score DC, and grows familiarity
+    // modulated by the player's skill vs. the song's DC.
     recordTabSession({ tabId, outcome, accuracy, playbackMultiplier, difficulty }) {
       if (!tabId) return null
       const existing = this.tabRecords[tabId] ?? emptyTabRecord()
@@ -142,9 +146,9 @@ export const useCharacterStore = defineStore('character', {
         attemptsCount: (existing.attemptsCount ?? 0) + 1,
         lastPlayedAt: now,
       }
-      // Cache difficulty the first time we know it.
-      if (difficulty != null && existing.estimatedDifficulty == null) {
-        next.estimatedDifficulty = difficulty
+      // Cache song DC the first time we know it.
+      if (difficulty != null && existing.dc == null) {
+        next.dc = difficulty
       }
 
       let scorePB = false
@@ -162,12 +166,13 @@ export const useCharacterStore = defineStore('character', {
         }
       }
 
-      // Growth modulation: base delta × clamp(0.5, 1.5, skill / difficulty).
+      // Growth modulation: base delta × clamp(0.5, 1.5, skill / dc).
+      // playerSkill and dc are now in the same integer units, so the ratio is
+      // direct (no rescaling needed).
       const baseDelta = outcome === 'completed' ? 0.05 : 0.02
-      const normalizedSpeed = (this.character.speed ?? SPEED_FLOOR) / SPEED_CAP
-      const skill = ((this.character.dexterity ?? 0) + normalizedSpeed) / 2
-      const diff = Math.max(0.15, next.estimatedDifficulty ?? difficulty ?? 0.5)
-      const ratio = skill / diff
+      const skill = ((this.character.dexterity ?? 0) + (this.character.speed ?? 0)) / 2
+      const dc = Math.max(DC_BASE, next.dc ?? difficulty ?? DC_BASE)
+      const ratio = skill / dc
       const growthMultiplier = Math.max(0.5, Math.min(1.5, ratio))
       const familiarityBefore = existing.familiarity ?? 0
       next.familiarity = Math.min(
@@ -224,9 +229,10 @@ export const useCharacterStore = defineStore('character', {
       }
       const before = { ...this.character }
 
-      this.character.speed     = clamp(this.character.speed     + xpGained.speed,     SPEED_FLOOR, SPEED_CAP)
-      this.character.dexterity = clamp(this.character.dexterity + xpGained.dexterity, DEX_FLOOR,   1.0)
-      this.character.endurance = clamp(this.character.endurance + xpGained.endurance, ENDURANCE_FLOOR, ENDURANCE_CAP)
+      // Uncapped: floor only.
+      this.character.speed     = floor(this.character.speed     + xpGained.speed,     SPEED_FLOOR)
+      this.character.dexterity = floor(this.character.dexterity + xpGained.dexterity, DEX_FLOOR)
+      this.character.endurance = floor(this.character.endurance + xpGained.endurance, ENDURANCE_FLOOR)
 
       const actual = {
         speed: this.character.speed - before.speed,
@@ -234,7 +240,6 @@ export const useCharacterStore = defineStore('character', {
         endurance: this.character.endurance - before.endurance,
       }
 
-      // Update the per-tab record (best score, completion count, familiarity).
       const recordDelta = this.recordTabSession({
         tabId, outcome, accuracy, playbackMultiplier, difficulty,
       })

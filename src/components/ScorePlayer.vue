@@ -5,9 +5,6 @@
     <p v-if="loadError" class="load-error">{{ loadError }}</p>
 
     <div v-if="isReady && !sessionResult" class="controls">
-      <button @click="playPause">{{ isPlaying ? 'Pause' : 'Play' }}</button>
-      <button @click="stop" :disabled="!isPlaying">Stop</button>
-
       <div class="fatigue">
         <label>Stamina</label>
         <progress :value="store.stamina" max="1" />
@@ -25,12 +22,13 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useAlphaTab } from '@/composables/useAlphaTab'
 import { useCharacterStore } from '@/stores/character'
 import { useTabSelection } from '@/composables/useTabSelection'
 import { usePlaybackLock } from '@/composables/usePlaybackLock'
 import { usePlaylist } from '@/composables/usePlaylist'
+import { usePlayerActions } from '@/composables/usePlayerActions'
 import SessionResult from './SessionResult.vue'
 
 const playerContainer = ref(null)
@@ -39,7 +37,7 @@ const {
   init,
   loadFile,
   loadUrl,
-  playPause,
+  play,
   stop,
   rewind,
   clearSessionResult,
@@ -53,9 +51,17 @@ const {
 const { pendingScore } = useTabSelection()
 const { setPlaying } = usePlaybackLock()
 const playlist = usePlaylist()
+const playerActions = usePlayerActions()
 const playlistLength = computed(() => playlist.length.value)
 
-onMounted(() => init())
+onMounted(() => {
+  init()
+  // Expose play/stop to other components (PlaylistColumn).
+  playerActions.register({ play, stop })
+})
+onBeforeUnmount(() => {
+  playerActions.unregister()
+})
 
 watch(isPlaying, (v) => setPlaying(v))
 
@@ -77,7 +83,7 @@ function onReplay() {
     playlist.restart()
   } else {
     rewind()
-    playPause()
+    play()
   }
 }
 </script>

@@ -42,19 +42,19 @@
         <li>
           Speed
           <strong :class="signClass(result.xpGained.speed)">
-            {{ signed(Math.round(result.xpGained.speed)) }} opm
+            {{ signed(Math.round(result.xpGained.speed)) }}
           </strong>
         </li>
         <li>
           Dexterity
           <strong :class="signClass(result.xpGained.dexterity)">
-            {{ signedPct(result.xpGained.dexterity) }}
+            {{ signed(Math.round(result.xpGained.dexterity)) }}
           </strong>
         </li>
         <li>
           Endurance
           <strong :class="signClass(result.xpGained.endurance)">
-            {{ signed(Math.round(result.xpGained.endurance)) }} notes
+            {{ signed(Math.round(result.xpGained.endurance)) }}
           </strong>
         </li>
       </ul>
@@ -137,10 +137,6 @@ const crossedNeutral = computed(() => {
 function signed(n) {
   if (n > 0) return `+${n}`
   return `${n}`
-}
-function signedPct(v) {
-  const sign = v > 0 ? '+' : ''
-  return `${sign}${(v * 100).toFixed(1)}%`
 }
 function signClass(v) {
   if (v > 0) return 'gain-positive'

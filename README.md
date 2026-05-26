@@ -143,13 +143,15 @@ A locked category is rendered in the library only if it carries a `hint`; withou
 
 ## Gameplay engine — at a glance
 
-### Character stats
+### Character stats (RPG-style: uncapped integers)
 
-| Stat | Type | Range | Effect |
-|---|---|---|---|
-| Speed | integer | 30..600 *opm* | Caps the playback tempo. `playbackMultiplier = min(1, speed / scoreOnsetRate)` |
-| Dexterity | float | 0.20..1.00 | Per-beat success roll threshold |
-| Endurance | integer | 30..500 notes | Per-session "note budget" (stamina) |
+| Stat | Type | Start | Floor | Cap | Effect |
+|---|---|---:|---:|---:|---|
+| Speed | integer | 30 | 30 | none | Caps the playback tempo. `playbackMultiplier = min(1, speed / scoreOnsetRate)` |
+| Dexterity | integer | random **50..100** | 50 | none | Compared against per-beat DC via Bradley-Terry. |
+| Endurance | integer | 30 | 30 | none | Per-session "note budget" (stamina). |
+
+Penalties never push a stat below its floor. There is no upper cap — a future ultra-hard tab can demand stat values that are currently unreachable.
 
 ### Per-beat loop ([useAlphaTab.js](src/composables/useAlphaTab.js))
 
@@ -157,24 +159,43 @@ On each `playedBeatChanged`:
 
 1. Resolve the *pre-rolled* outcome for the current beat (rolled one beat earlier so the wrong-pitch transposition is set before audio starts → no synth pitch-bend slide).
 2. Drain stamina by `beatExhaustion(beat, lastNote, effectiveBpm)`.
-3. Pre-roll for the next beat with `rollBeatAccuracy(dexterity, beat, lastNote, effectiveBpm)`.
+3. Pre-roll the next beat with `rollBeatAccuracy(effectiveDex, beat, lastNote, effectiveBpm)` where `effectiveDex = effectiveDexFor(character.dexterity, currentFamiliarity)`.
 4. If stamina ≤ 0 → `endSession('exhausted')`.
 
-Both `beatExhaustion` and `rollBeatAccuracy` use [`physicalDistance(prev, current)`](src/utils/rpgEngine.js) to gauge how hard the transition is:
+Per-beat **Difficulty Class** (DC) is computed by [`beatDC()`](src/utils/rpgEngine.js):
 
-- On TAB-style notes (guitar/bass) → `fretGap + stringGap × 0.5`. Captures position changes vs. string skips.
-- On other notes (piano, raw MIDI) → falls back to absolute MIDI interval.
+```
+beatDC = DC_BASE × distanceFactor × chordFactor × speedFactor
+```
+
+- `DC_BASE = 60` (a single quarter note, no jump, comfortable tempo).
+- `distanceFactor = 1 + max(0, dist - 2) / 8` — uses `physicalDistance` (fret gap + 0.5 × string skip on TAB, MIDI interval otherwise).
+- `chordFactor = 1 + (notes.length - 1) × 0.35`.
+- `speedFactor = 1 + (1 - ease) × 2` where `ease` is derived from the beat's real-time duration at the effective tempo.
+
+The roll is **Bradley-Terry**: `chance = effectiveDex / (effectiveDex + beatDC)`. Naturally asymptotic, so randomness is always preserved — no explicit miss-rate cap needed.
+
+### Muscle memory (Comfort)
+
+Per-tab `familiarity` ∈ [0, 0.4], persisted in `tabRecords[id]`. `effectiveDexFor(baseDex, familiarity)` applies a **multiplicative** modifier:
+
+```
+comfortMod = 1 + (familiarity - 0.20) × 1.0   // range [0.80, 1.20]
+effectiveDex = max(10, baseDex × comfortMod)
+```
+
+So unfamiliar songs penalise (−20%) and mastered songs reward (+20%) proportionally to the player's current stat. Familiarity grows on every session, faster on completed runs, modulated by `clamp(0.5, 1.5, playerSkill / songDC)`.
 
 ### Session outcomes
 
 | Outcome | When | Speed | Dexterity | Endurance |
 |---|---|---|---|---|
-| `completed` + accuracy > 70% | `playerFinished` | +10 opm | +2.0% | +5 notes |
-| `completed` + accuracy ≤ 70% | `playerFinished` | +10 opm | +0.8% | +5 notes |
-| `stopped` | Stop button | +1 opm | +0.5% | −2 notes |
-| `exhausted` | stamina depleted | 0 | 0 | −5 notes |
+| `completed` + accuracy > 70% | `playerFinished` | +10 | +10 | +5 |
+| `completed` + accuracy ≤ 70% | `playerFinished` | +10 | +4 | +5 |
+| `stopped` | Stop button | +1 | +1 | −2 |
+| `exhausted` | stamina depleted | 0 | 0 | −5 |
 
-Sessions shorter than 10 beats are discarded entirely (`MIN_BEATS_FOR_OUTCOME`). Stat changes are clamped to `[floor, cap]` and the actual delta (post-clamp) is what gets stored in history and displayed in the session result panel.
+Sessions shorter than 10 beats are discarded entirely (`MIN_BEATS_FOR_OUTCOME`). Stat changes are floored — no upper cap, so the displayed delta matches the actual gain unless a penalty would push the stat below its floor.
 
 ### Playlist & streak bonus
 
@@ -199,15 +220,15 @@ Local-only, sliced into a few `localStorage` keys:
 
 | Key | Contents |
 |---|---|
-| `alphatab_rpg_save_v5` | `{ character, history, notesPlayed, completedTabs }` |
+| `alphatab_rpg_save_v7` | `{ character, history, notesPlayed, tabRecords }` |
 | `alphatab_rpg_volume` | Main volume (0..1) |
 | `alphatab_rpg_backing_volume` | Backing-track volume (0..1) |
 
-The character store automatically migrates older save versions on load (`v1` → `v2` → ... → `v5`) and removes obsolete keys after a successful upgrade. Migrated saves missing an instrument default to Piano (the most permissive class).
+**No migration between save versions during development.** On load, any legacy key (`v1` … `v6`) is silently wiped — schema bumps force a fresh character. Once the project stabilises this policy can be replaced with proper migrations.
 
-The **Reset character** button in the settings menu wipes `alphatab_rpg_save_v5` and forces the cold-start flow (CharacterSetup overlay). Volume settings are preserved.
+The **Reset character** button in the settings menu wipes `alphatab_rpg_save_v7` and forces the cold-start flow (CharacterSetup overlay) with a fresh random Dexterity roll. Volume settings are preserved.
 
-Score files are never stored — only the manifest IDs of completed tabs are.
+Score files are never stored — only the tab IDs in `tabRecords`.
 
 ---
 

@@ -1,167 +1,162 @@
 # AlphaTab RPG — Player Guide
 
-You're a beginner musician with shaky fingers, low stamina, and tempo that crawls. Every score you load plays slower than written, you fumble notes, and you run out of breath fast. Practice enough scores and your character grows — until one day you nail anything at full tempo from start to finish.
+You're a beginner musician with shaky fingers, low stamina, and tempo that crawls. Every score you load plays slower than written, you fumble notes, and you run out of breath fast. Practice enough scores and your character grows — your **Speed**, **Dexterity**, and **Endurance** stats have no upper limit, so there's always more to grind.
 
-This is a single-player browser game. Everything lives in your browser, nothing is sent anywhere, and you can close the tab whenever you want.
+This is a single-player browser game. Everything lives in your browser, nothing is sent anywhere.
 
 ---
 
 ## First time setup
 
-When you launch the game for the first time, pick a **name** and an **instrument**. The choice is **permanent** for this character — switching instruments will come later as a Prestige reward.
+When you launch the game for the first time, pick a **name** and an **instrument**. The choice is **permanent** for this character.
 
-Three instruments are available right now:
+- 🎹 **Piano** — the classic experience. Piano players can play piano scores *and* fall back to guitar scores when no piano track is in the file.
+- 🎸 **Guitar** — plays guitar scores only.
+- 🪕 **Bass** — plays bass scores only.
+- 🥁 **Drummer** — locked, coming in a future update.
 
-- 🎹 **Piano** — the classic experience. Piano players can play piano scores *and* fall back to guitar scores when no piano track is in the file. Broadest repertoire.
-- 🎸 **Guitar** — plays guitar scores only. More flavor, fewer choices.
-- 🪕 **Bass** — plays bass scores only. Same deal.
+Your initial **Dexterity** is rolled randomly between **50 and 100** at creation — like rolling stats in a tabletop RPG, you might get a slight head start or have to work a bit more.
 
-(A 🥁 **Drummer** card is visible but locked — coming in a future update.)
+---
 
-After setup, your character is saved automatically in your browser.
+## The three stats — plain integers, no cap
+
+| Stat | Start | Floor | What it does |
+|---|---:|---:|---|
+| Speed | 30 | 30 | Higher Speed = the score plays closer to its real tempo. |
+| Dexterity | 50–100 (random) | 50 | Higher Dexterity = better odds of hitting each beat cleanly. |
+| Endurance | 30 | 30 | Higher Endurance = you can play more notes before collapsing. |
+
+Stats grow when you complete songs and shrink slightly when you fail. **No upper bound** — keep grinding, keep growing. The bar in the UI is purely indicative; it slides to the next round milestone as you climb.
+
+---
+
+## How a beat is rolled (Dexterity in action)
+
+Every beat in the score has a **Difficulty Class (DC)** — a single number combining note jump distance, chord size, and how short the beat is. A trivial single quarter note has DC around 60; a fast chord with a big leap can pass DC 1000+.
+
+When the cursor reaches the beat, your effective dexterity is compared to the DC:
+
+```
+chance = effectiveDex / (effectiveDex + DC)
+```
+
+| Your effectiveDex | Beat DC | Chance of hitting cleanly |
+|---:|---:|---:|
+| 60 | 60 | 50% (parity) |
+| 200 | 60 | 77% |
+| 60 | 200 | 23% |
+| 600 | 60 | 91% |
+| 60 | 600 | 9% |
+
+This formula has nice properties:
+
+- **No 100% ceiling.** Music is never robotic — there's always a sliver of randomness.
+- **Diminishing returns.** Going from Dex 100 to 200 on an easy beat (+27% chance) is a much bigger boost than going from Dex 900 to 1000 (+1% chance). The early grind is the most rewarding per point.
+- **The challenge always exists.** A future ultra-hard tab can simply have DC 2000 and remain a real test even for veteran characters.
+
+When the roll fails, the audio plays the wrong pitch (off by 1–3 semitones) for that beat. The displayed score doesn't change — only what you *hear* reflects your mistakes.
+
+---
+
+## Comfort (muscle memory, per song)
+
+The more you practice a song, the more "comfortable" you become with it. Comfort is a **multiplicative modifier** on your Dexterity for *that song only*:
+
+| Comfort | Effective Dex |
+|---|---|
+| 0 (never played) | baseDex × 0.80 (−20%) |
+| 0.20 (a few plays) | baseDex × 1.00 (neutral) |
+| 0.40 (mastered) | baseDex × 1.20 (+20%) |
+
+So even a virtuoso fumbles a song they've never opened — that's the muscle memory model. Every play grows comfort a little; completed sessions grow it more. Growth is also modulated by how the song's DC compares to your skill (easier songs are quicker to internalize).
 
 ---
 
 ## How a session works
 
-1. **Pick a score** from the *Score library* on the right. Categories unfold to show the tabs inside. Click a tab to add it to your **Playlist** (left column). The first click also loads it into the player.
-2. *(Optional)* **Queue more scores** by clicking other tabs — they line up after the current one.
-3. **Press Play.** The score scrolls horizontally and a red cursor follows the current beat. Audio plays you at full volume; the rest of the band is heard in the background.
-4. **Watch the stamina bar.** It drains as you play and is shared across the whole playlist — finishing a long playlist is a real endurance test.
-5. **Reach the end** of every queued song (or run out of stamina, or hit Stop) and a result panel shows how it went.
+1. Pick a score from the right column.
+2. Click it to add it to your **Playlist** (left column). First click also loads it. Click more to queue more.
+3. Press **Play**. The score scrolls horizontally; a red cursor follows the beat. Your instrument plays at full volume; the rest of the band plays as backing (volume configurable).
+4. Watch the stamina bar — it drains across the **whole playlist**, not per song.
+5. When all queued songs finish (or you Stop, or you collapse), a result panel shows what you gained.
 
-You can't click on the score to skip ahead. The cursor follows the playback in real time — you play what your character can play.
+---
+
+## How sessions end and what you gain
+
+| Outcome | Speed | Dexterity | Endurance |
+|---|---:|---:|---:|
+| **Completed** + accuracy > 70% | +10 | +10 | +5 |
+| **Completed** + accuracy ≤ 70% | +10 | +4 | +5 |
+| **Stopped manually** | +1 | +1 | −2 |
+| **Collapsed from exhaustion** | 0 | 0 | −5 |
+
+Penalties never drop you below the starting floor (Speed 30, Dex 50, Endurance 30). Sessions under 10 beats don't count.
+
+**Strategy:**
+
+- **Finishing is by far the most rewarding outcome.** Pick songs you can complete.
+- **Stop = smart retreat.** Hitting Stop costs less than crashing.
+- **Crashing is the worst path.** Maximum penalty, no progress.
+- Long, slow scores are stamina-friendly — easy to finish.
+- Fast scores burn endurance fast — efficient *only* if you can survive them.
+
+### Streak bonus
+
+Completing songs back-to-back in a single playlist run multiplies positive gains:
+
+| Completions in a row | Multiplier |
+|---:|---:|
+| 1 | ×1.00 |
+| 2 | ×1.10 |
+| 3 | ×1.20 |
+| 4+ | ×1.30 (cap) |
+
+Failing a song resets the streak.
 
 ---
 
 ## The Score library
 
-Tabs are grouped into **categories** (First Steps, Solo Practice, Fingerpicking, Classic Songs…). Each category has its own unlock rule:
+Tabs are grouped into **categories** (First Steps, Solo Practice, Fingerpicking, Classic Songs, …). Each one has its own unlock rule:
 
 - 🔓 **Unlocked** — fold open, click to queue.
-- 🔒 **Locked** — the unlock hint tells you what to grind ("Complete every First Steps track", "Reach 100 Endurance"…). Categories with no hint are hidden entirely until unlocked.
+- 🔒 **Locked** — the unlock hint tells you what to grind ("Complete every First Steps track", "Reach 800 Dexterity"…). Categories with no hint are hidden entirely until unlocked.
 
-Each tab shows a **difficulty rating** (1–5 stars) computed from its tempo, note jumps, and note density. Tabs that don't have a track for your instrument are simply not shown to you.
-
-A green check (`✓`) next to a tab means you've completed it at least once.
-
----
-
-## The Playlist
-
-The left column is your queue. Clicking a tab in the library adds it. Drag's not in yet, but you can remove individual entries with the `×` button or clear the whole queue with **Clear**.
-
-Once you press Play, the songs chain automatically: when one finishes, the next loads and plays. Your stamina **does not reset** between songs — that's what makes long playlists challenging.
-
-If you hit Stop or collapse from exhaustion **mid-playlist**, the whole run ends. The post-playlist panel offers a **Replay** button that restarts from the first song with full stamina.
-
-### Consecutive streak bonus
-
-Completing songs back-to-back in a playlist applies a bonus multiplier to your stat gains:
-
-| Completions in a row | Bonus |
-|---|---|
-| 1 | ×1.0 |
-| 2 | ×1.10 |
-| 3 | ×1.20 |
-| 4+ | ×1.30 (cap) |
-
-Failing or stopping a song resets the streak to ×1.0.
-
----
-
-## Your three stats
-
-Stats grow when you complete songs and shrink slightly when you fail. Speed and Endurance are integers; Dexterity is a percentage.
-
-### Speed — *opm* (onsets per minute)
-
-Your top sustainable note rate. Every score has an inherent onset rate (how many notes per minute it asks for, measured at the 95th percentile so the odd grace note doesn't dominate). If your Speed ≥ the score's onset rate, it plays at full tempo. Otherwise, playback **slows down**, in proportion. There's no floor — at low Speed, hard songs will crawl.
-
-Quick reference:
-
-| Beat type at 120 BPM | Onset rate |
-|---|---|
-| Whole notes | 30 opm |
-| Quarter notes | 120 opm |
-| Eighth notes | 240 opm |
-| Sixteenth notes | 480 opm |
-
-### Dexterity — % chance to hit each beat cleanly
-
-A hidden roll fires on every beat. The roll gets harder when:
-
-- The **hand has to move** a lot from the previous note (long fret jumps on guitar/bass, big intervals on piano).
-- The beat lasts a **very short time** in real-time (Speed slowdown makes things easier here — slow tempo = generous rolls).
-- The beat contains **multiple simultaneous notes** (every extra finger you might miss).
-
-When the roll fails, the audio plays the wrong pitch (off by 1–3 semitones) for that beat. The displayed score doesn't change — only what you *hear* reflects your mistakes.
-
-### Endurance — total notes you can play in one session
-
-Endurance is a budget. Every beat costs some "notes" out of that budget; when the budget runs out, your character collapses. A baseline note (a quarter at 120 BPM with no jump) costs 1. Faster notes, bigger jumps, and bigger chords cost more.
-
-In a playlist, the budget is shared across the whole run — Endurance is the cost of stringing pieces together.
-
----
-
-## How sessions end (and what you gain)
-
-A session can finish in three ways:
-
-| Outcome | Speed | Dexterity | Endurance |
-|---|---|---|---|
-| **Completed** + accuracy > 70% | +10 opm | +2.0% | +5 notes |
-| **Completed** + accuracy ≤ 70% | +10 opm | +0.8% | +5 notes |
-| **Stopped manually** | +1 opm | +0.5% | **−2 notes** |
-| **Collapsed from exhaustion** | 0 | 0 | **−5 notes** |
-
-**Caps**: Speed 600, Dexterity 100%, Endurance 500. **Floors**: 30, 20%, 30 — penalties stop biting once you hit the floor, so you can't soft-lock yourself.
-
-**Sessions under 10 beats don't count.** Click Stop right after starting and nothing happens (no gain, no penalty).
-
-**Strategy:**
-
-- **Finishing is by far the most rewarding outcome.** Pick songs you can complete.
-- **Stop = smart retreat.** Realising mid-song you'll never make it? Hit Stop. −2 endurance hurts less than crashing for −5.
-- **Crashing is the worst path.** No XP, biggest endurance hit.
-- Long, slow scores are stamina-friendly — easy to finish, reliable progression.
-- Fast, leap-heavy scores burn endurance fast — efficient *only* if you can survive them.
-
----
-
-## Settings
-
-Open the gear in the top-left:
-
-- **Volume** — main volume of everything alphaTab plays.
-- **Backing volume** — how loud the other tracks in the score (drums, bass, etc.) are relative to your instrument. Lower it if you want to focus on what *you* play.
-- **Reset character** (Danger zone) — wipes your save and starts from scratch. Useful if you backed yourself into a corner.
+Each tab shows a **difficulty rating** (1–5 stars) based on its DC, plus a **high-score record** once you've completed it at least once. The high score is a composite of accuracy × effective tempo: 5★ requires near-perfection on *both* axes — long-term goal even after first completion.
 
 ---
 
 ## Custom scores
 
-Once you've completed **every** built-in score at least once (for your instrument), the *Custom score* dropzone unlocks at the top of the right column. You can then drop any Guitar Pro (`.gp`, `.gp3`, `.gp4`, `.gp5`, `.gpx`) or MusicXML (`.xml`, `.musicxml`) file in there and play it.
+Once you've completed every built-in score at least once (for your instrument), the *Custom score* dropzone unlocks at the top of the right column. Drop any Guitar Pro (`.gp`, `.gp3-5`, `.gpx`) or MusicXML (`.xml`, `.musicxml`) file in there.
 
-Until then the dropzone shows your progress: "(*N*/*M*) — Complete every built-in score to unlock custom uploads."
+Score files themselves are never saved — only your stats and a small session history.
 
-Score files themselves are never saved between sessions — only your stats and a small session history.
+---
+
+## Settings
+
+Open the gear (top-left):
+
+- **Volume** — main volume of everything alphaTab plays.
+- **Backing volume** — how loud the other tracks in the score are relative to your instrument.
+- **Reset character** (Danger zone) — wipes your save and starts from scratch with a fresh Dexterity roll.
 
 ---
 
 ## Save data
 
-Everything lives in your browser's `localStorage`. Closing and reopening the tab restores your character; clearing your browser data wipes it. The "Reset character" button in the settings menu is the clean way to start over.
+Everything lives in your browser's `localStorage`. Closing and reopening the tab restores your character; clearing your browser data wipes it.
 
-There's no account, no server, no cloud sync. Take care of your save.
+The game is still in active development. **Schema changes may force a fresh character** — when this happens, your old save is wiped on next launch with no migration.
 
 ---
 
 ## Tips
 
-- A piece that's far too fast for your Speed is actually one of the safest grinds: the slow forced tempo means tiny endurance cost and generous accuracy rolls.
-- Hearing wrong notes constantly? Your Dexterity is too low for that passage. Pick easier music until the stat rises.
-- "Replay" after a session resets stamina and plays the song (or the whole playlist) again from the top, without you having to press Play.
-- Stop / Pause is disabled while the player is idle. Score-switching is locked while the player is running — Stop the session first.
-- Drop a single one-off custom file (once unlocked) and it bypasses the playlist — it plays directly, alone.
+- A piece that's far too fast for your Speed is one of the safest grinds: the forced slowdown gives generous accuracy rolls and tiny endurance cost.
+- Re-playing a song you've cleared boosts its **comfort**, which makes future runs easier on that specific song. Comfort caps at +20% on top of your raw Dexterity.
+- "Replay" after a session resets stamina and plays the song (or whole playlist) again from the top without you pressing Play.
+- Score-switching is locked while the player is running — Stop the session first.

@@ -16,10 +16,10 @@
     </header>
     <div v-for="stat in stats" :key="stat.key" class="stat">
       <label>{{ stat.label }}</label>
-      <div class="bar">
+      <div class="bar" :title="`Next milestone: ${stat.milestone}`">
         <div class="fill" :style="{ width: `${stat.ratio * 100}%` }" />
       </div>
-      <span class="value">{{ stat.display }}</span>
+      <span class="value">{{ stat.value }}</span>
     </div>
   </section>
 </template>
@@ -29,31 +29,34 @@ import { computed } from 'vue'
 import { useCharacterStore } from '@/stores/character'
 import { INSTRUMENT_META } from '@/utils/instruments'
 
-const SPEED_CAP = 600
-const ENDURANCE_CAP = 500
-
 const store = useCharacterStore()
 const instrumentMeta = computed(() => INSTRUMENT_META[store.character.instrument] ?? null)
 
+// Sliding milestone: round up to the next "tier" so the bar always shows
+// continuous progress toward the next round number. Steps grow at higher
+// values to keep the bar visually meaningful.
+function milestoneFor(stat) {
+  if (stat < 100) return 100
+  if (stat < 500) return Math.ceil((stat + 1) / 100) * 100
+  if (stat < 2000) return Math.ceil((stat + 1) / 250) * 250
+  return Math.ceil((stat + 1) / 500) * 500
+}
+
+function statRow(key, label, value) {
+  const ms = milestoneFor(value)
+  return {
+    key,
+    label,
+    value,
+    milestone: ms,
+    ratio: Math.max(0, Math.min(1, value / ms)),
+  }
+}
+
 const stats = computed(() => [
-  {
-    key: 'speed',
-    label: 'Speed',
-    ratio: Math.min(1, store.character.speed / SPEED_CAP),
-    display: `${store.character.speed} opm`,
-  },
-  {
-    key: 'dexterity',
-    label: 'Dexterity',
-    ratio: store.character.dexterity,
-    display: `${Math.round(store.character.dexterity * 100)}%`,
-  },
-  {
-    key: 'endurance',
-    label: 'Endurance',
-    ratio: Math.min(1, store.character.endurance / ENDURANCE_CAP),
-    display: `${store.character.endurance} notes`,
-  },
+  statRow('speed', 'Speed', store.character.speed),
+  statRow('dexterity', 'Dexterity', store.character.dexterity),
+  statRow('endurance', 'Endurance', store.character.endurance),
 ])
 </script>
 
@@ -97,7 +100,7 @@ const stats = computed(() => [
 }
 .stat {
   display: grid;
-  grid-template-columns: 90px 1fr 80px;
+  grid-template-columns: 90px 1fr 60px;
   align-items: center;
   gap: 0.5rem;
 }
