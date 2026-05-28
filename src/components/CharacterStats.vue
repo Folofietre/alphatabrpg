@@ -48,12 +48,18 @@ const HINTS = {
   endurance: 'Maximum notes per run before you collapse from fatigue.',
 }
 
+// Round to at most 2 decimals. Trailing zeros are stripped (Number(...))
+// so a clean 30 stays "30" and 11.4 stays "11.4" rather than "11.40".
+function formatStat(v) {
+  return Number((v ?? 0).toFixed(2))
+}
+
 function statRow(key, label, value) {
   const ms = milestoneFor(value)
   return {
     key,
     label,
-    value,
+    value: formatStat(value),
     milestone: ms,
     ratio: Math.max(0, Math.min(1, value / ms)),
     hint: HINTS[key] ?? '',

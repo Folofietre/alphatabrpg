@@ -35,6 +35,25 @@ export function useAlphaTab(containerRef) {
   let currentComfortSpeed = 1  // min(1, speed/onsetRate) — slider's "neutral" point
   let currentOverSpeed = 1     // max(1, selectedSpeed/comfortSpeed) — dex penalty divisor
 
+  // Run-wide accumulator: per-song summaries and total XP gained across the
+  // entire playlist run. Reset when a fresh run starts (via play() or the
+  // Replay button). Drives the aggregate result panel at end-of-run.
+  let runSongs = []
+  let runXP = { speed: 0, dexterity: 0, endurance: 0, stretchSpeed: 0 }
+  function resetRunAccumulator() {
+    runSongs = []
+    runXP = { speed: 0, dexterity: 0, endurance: 0, stretchSpeed: 0 }
+  }
+  function pushRunSong(entry) {
+    runSongs.push(entry)
+    if (entry.xpGained) {
+      runXP.speed += entry.xpGained.speed ?? 0
+      runXP.dexterity += entry.xpGained.dexterity ?? 0
+      runXP.endurance += entry.xpGained.endurance ?? 0
+      runXP.stretchSpeed += entry.xpGained.stretchSpeed ?? 0
+    }
+  }
+
   function applyTransposition(semitones) {
     if (!api.value || semitones === currentTransposition) return
     api.value.changeTrackTranspositionPitch(api.value.tracks, semitones)
@@ -90,7 +109,8 @@ export function useAlphaTab(containerRef) {
     const title = api.value.score?.title || 'Unknown score'
     const beatCount = sessionStats.value.totalBeats
 
-    store.applySessionXP({
+    const aboveComfort = playbackMultiplier > currentComfortSpeed + 1e-6
+    const xpGained = store.applySessionXP({
       tabId: currentTabId,
       title,
       accuracy,
@@ -100,7 +120,18 @@ export function useAlphaTab(containerRef) {
       playbackMultiplier,
       difficulty: currentDifficulty,
       onsetRate: currentOnsetRate,
-      aboveComfort: playbackMultiplier > currentComfortSpeed + 1e-6,
+      aboveComfort,
+    })
+
+    pushRunSong({
+      title,
+      accuracy,
+      beatCount,
+      outcome: 'completed',
+      selectedSpeed: playbackMultiplier,
+      aboveComfort,
+      xpGained,
+      recordDelta: xpGained?.recordDelta ?? null,
     })
 
     // Advance — onSongCompleted internally triggers the next-load via
@@ -136,20 +167,57 @@ export function useAlphaTab(containerRef) {
       aboveComfort,
     })
 
-    sessionResult.value = {
-      tabId: currentTabId,
+    pushRunSong({
       title,
       accuracy,
-      outcome,
       beatCount,
+      outcome,
+      selectedSpeed: playbackMultiplier,
+      aboveComfort,
       xpGained,
       recordDelta: xpGained?.recordDelta ?? null,
+    })
+
+    // Build the result panel from the run accumulator. For a single-song run
+    // this collapses to the previous per-song shape; for a multi-song run it
+    // aggregates beats + XP across every attempted song.
+    const songs = runSongs.slice()
+    const isMulti = songs.length > 1
+    const totalBeats = songs.reduce((s, x) => s + (x.beatCount || 0), 0)
+    const totalSuccess = songs.reduce(
+      (s, x) => s + (x.beatCount || 0) * (x.accuracy ?? 0),
+      0,
+    )
+    const aggAccuracy = totalBeats > 0 ? totalSuccess / totalBeats : 0
+    // Surface the last PB the run produced (if any) for the celebration line.
+    let lastPB = null
+    for (const s of songs) {
+      if (s.recordDelta?.scorePB) lastPB = s.recordDelta
+    }
+
+    sessionResult.value = {
+      tabId: currentTabId,
+      title: isMulti ? 'Playlist run' : title,
+      accuracy: aggAccuracy,
+      outcome,
+      beatCount: totalBeats,
+      xpGained: isMulti ? { ...runXP } : xpGained,
+      // For multi runs, surface the latest PB so the celebration line can fire;
+      // SessionResult hides the comfort row (which is per-song) in this mode.
+      recordDelta: isMulti ? lastPB : (xpGained?.recordDelta ?? null),
       bonusMultiplier: bonusMultiplier !== 1 ? bonusMultiplier : undefined,
-      tooShort: xpGained?.tooShort === true,
+      // "Too short" only applies when the entire run fell below the floor.
+      tooShort: totalBeats < 10,
       playlistFinished: playlist.isRunning.value && outcome === 'completed',
-      selectedSpeed: playbackMultiplier,
-      comfortSpeed: currentComfortSpeed,
-      aboveComfort,
+      // Per-song speed details only make sense on single-song runs; for
+      // playlist aggregates they live inside each `songs[]` entry instead.
+      selectedSpeed: isMulti ? null : playbackMultiplier,
+      comfortSpeed: isMulti ? null : currentComfortSpeed,
+      aboveComfort: isMulti ? false : aboveComfort,
+      songs: isMulti ? songs : null,
+      lastPB,
+      songsCompletedCount: songs.filter((s) => s.outcome === 'completed').length,
+      songsAttemptedCount: songs.length,
     }
     isPlaying.value = false
 
@@ -381,6 +449,7 @@ export function useAlphaTab(containerRef) {
         // Multi-song queue: restart from index 0. restart() arms autoPlay,
         // which makes the first scoreLoaded callback play() automatically —
         // nothing else to do here.
+        resetRunAccumulator()
         playlist.restart()
         return
       }
@@ -390,6 +459,7 @@ export function useAlphaTab(containerRef) {
 
     if (playlist.length.value > 0 && !playlist.isRunning.value) {
       store.resetStamina()
+      resetRunAccumulator()
       playlist.markRunStarted()
     }
     api.value.play()

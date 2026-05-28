@@ -4,6 +4,10 @@
     <p class="title">{{ result.title }}</p>
 
     <ul class="metrics">
+      <li v-if="isMulti">
+        <span>Songs</span>
+        <strong>{{ result.songsCompletedCount }} / {{ result.songsAttemptedCount }}</strong>
+      </li>
       <li>
         <span>Accuracy</span>
         <strong>{{ Math.round(result.accuracy * 100) }}%</strong>
@@ -12,7 +16,7 @@
         <span>Beats played</span>
         <strong>{{ result.beatCount }}</strong>
       </li>
-      <li v-if="result.selectedSpeed != null">
+      <li v-if="!isMulti && result.selectedSpeed != null">
         <span>Speed</span>
         <strong>
           {{ Math.round(result.selectedSpeed * 100) }}%
@@ -22,6 +26,20 @@
       <li>
         <span>Outcome</span>
         <strong>{{ outcomeLabel }}</strong>
+      </li>
+    </ul>
+
+    <ul v-if="isMulti" class="songs">
+      <li v-for="(song, i) in result.songs" :key="i" :class="`song-${song.outcome}`">
+        <span class="song-marker" aria-hidden="true">
+          {{ song.outcome === 'completed' ? '✓' : song.outcome === 'stopped' ? '■' : '☠' }}
+        </span>
+        <span class="song-title">{{ song.title }}</span>
+        <span class="song-meta">
+          {{ Math.round((song.accuracy ?? 0) * 100) }}%
+          · {{ Math.round((song.selectedSpeed ?? 0) * 100) }}%
+          <strong v-if="song.recordDelta?.scorePB" class="song-pb">🏆 PB</strong>
+        </span>
       </li>
     </ul>
 
@@ -69,7 +87,7 @@
         </li>
       </ul>
 
-      <div v-if="recordDelta" class="comfort-row">
+      <div v-if="recordDelta && !isMulti" class="comfort-row">
         <span class="comfort-label">Comfort</span>
         <ComfortBar :familiarity="recordDelta.familiarityBefore" />
         <span class="comfort-arrow">→</span>
@@ -116,6 +134,7 @@ const OUTCOMES = {
 
 const headline = computed(() => HEADLINES[props.result.outcome] ?? 'Session ended')
 const outcomeLabel = computed(() => OUTCOMES[props.result.outcome] ?? '—')
+const isMulti = computed(() => (props.result.songs?.length ?? 0) > 1)
 const anyGain = computed(() => {
   const g = props.result.xpGained
   return g && (g.speed !== 0 || g.dexterity !== 0 || g.endurance !== 0)
@@ -235,6 +254,39 @@ function formatScore(n) {
   margin: 0;
   font-size: 0.85rem;
   color: var(--palm-leaf);
+}
+.songs {
+  list-style: none;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.82rem;
+
+  li {
+    display: grid;
+    grid-template-columns: 1rem 1fr auto;
+    align-items: baseline;
+    gap: 0.4rem;
+    padding: 0.2rem 0.35rem;
+    border-radius: $radius-sm;
+    background: rgba(0, 0, 0, 0.04);
+  }
+  .song-stopped   { color: var(--ash-brown); opacity: 0.85; }
+  .song-exhausted { color: var(--faded-copper); opacity: 0.85; }
+  .song-marker { text-align: center; opacity: 0.8; }
+  .song-title  {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .song-meta {
+    @include tabular;
+    font-size: 0.78rem;
+    opacity: 0.85;
+  }
+  .song-pb { color: var(--palm-leaf); margin-left: 0.35rem; }
 }
 .above-comfort {
   margin-left: 0.35rem;
