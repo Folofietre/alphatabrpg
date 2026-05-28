@@ -92,8 +92,8 @@ export function usePlaylist() {
 
   function removeAt(index) {
     if (index < 0 || index >= queue.value.length) return
-    // Can't remove the currently-playing track.
-    if (index === currentIndex.value && isRunning.value) return
+    // Queue is fully locked during a run — current or upcoming, no removals.
+    if (isRunning.value) return
 
     const next = queue.value.filter((_, i) => i !== index)
     queue.value = next

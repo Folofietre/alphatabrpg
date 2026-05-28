@@ -29,7 +29,7 @@
             <span class="artist">{{ tab.artist }}</span>
           </div>
           <button
-            v-if="canRemove(idx)"
+            v-if="canRemove()"
             type="button"
             class="remove"
             :title="`Remove ${tab.title}`"
@@ -156,10 +156,10 @@ function onSpeedInput(idx, event) {
   playlist.setSelectedSpeedAt(idx, v)
 }
 
-function canRemove(idx) {
-  // Can't remove the currently-loaded track while a run is in progress.
-  if (idx === currentIndex.value && isRunning.value) return false
-  return true
+function canRemove() {
+  // The whole queue is locked while a run is in progress — changing it
+  // mid-playback (current or upcoming entries) would be confusing.
+  return !isRunning.value
 }
 
 function removeAt(idx) {
