@@ -20,20 +20,43 @@
           upcoming: idx > currentIndex,
         }"
       >
-        <span class="marker" aria-hidden="true">
-          {{ idx === currentIndex ? '▶' : isPlayedAt(idx) ? '✓' : idx + 1 }}
-        </span>
-        <div class="meta">
-          <span class="title">{{ tab.title }}</span>
-          <span class="artist">{{ tab.artist }}</span>
+        <div class="row-head">
+          <span class="marker" aria-hidden="true">
+            {{ idx === currentIndex ? '▶' : isPlayedAt(idx) ? '✓' : idx + 1 }}
+          </span>
+          <div class="meta">
+            <span class="title">{{ tab.title }}</span>
+            <span class="artist">{{ tab.artist }}</span>
+          </div>
+          <button
+            v-if="canRemove(idx)"
+            type="button"
+            class="remove"
+            :title="`Remove ${tab.title}`"
+            @click="removeAt(idx)"
+          >×</button>
         </div>
-        <button
-          v-if="canRemove(idx)"
-          type="button"
-          class="remove"
-          :title="`Remove ${tab.title}`"
-          @click="removeAt(idx)"
-        >×</button>
+        <div class="speed-row" :title="speedTooltip(idx)">
+          <span class="slider-wrap">
+            <input
+              type="range"
+              class="speed"
+              :min="SPEED_MIN_PCT"
+              :max="SPEED_MAX_PCT"
+              step="1"
+              :value="speedPct(idx)"
+              :disabled="isRunning"
+              @input="onSpeedInput(idx, $event)"
+            />
+            <span
+              v-if="comfortPct(idx) != null"
+              class="comfort-notch"
+              :style="markerStyle(idx)"
+              aria-hidden="true"
+            />
+          </span>
+          <span class="speed-value">{{ speedLabel(idx) }}</span>
+        </div>
       </li>
     </ul>
 
@@ -72,13 +95,18 @@
 
 <script setup>
 import { computed } from 'vue'
-import { usePlaylist } from '@/composables/usePlaylist'
+import { usePlaylist, SPEED_MIN, SPEED_MAX, comfortFor } from '@/composables/usePlaylist'
 import { usePlaybackLock } from '@/composables/usePlaybackLock'
 import { usePlayerActions } from '@/composables/usePlayerActions'
+import { useCharacterStore } from '@/stores/character'
 
 const playlist = usePlaylist()
 const { isPlaying } = usePlaybackLock()
 const playerActions = usePlayerActions()
+const store = useCharacterStore()
+
+const SPEED_MIN_PCT = Math.round(SPEED_MIN * 100)
+const SPEED_MAX_PCT = Math.round(SPEED_MAX * 100)
 
 const queue = computed(() => playlist.queue.value)
 const length = computed(() => playlist.length.value)
@@ -89,6 +117,43 @@ const isRunning = computed(() => playlist.isRunning.value)
 
 function isPlayedAt(idx) {
   return playlist.isPlayedAt(idx)
+}
+
+function speedFor(idx) {
+  return queue.value[idx]?.selectedSpeed ?? null
+}
+function speedPct(idx) {
+  const v = speedFor(idx)
+  return v == null ? SPEED_MAX_PCT : Math.round(v * 100)
+}
+function speedLabel(idx) {
+  const v = speedFor(idx)
+  return v == null ? '—' : `${Math.round(v * 100)}%`
+}
+function comfortPct(idx) {
+  const tab = queue.value[idx]
+  const record = tab?.id ? store.tabRecords?.[tab.id] : null
+  const c = comfortFor(store.character.speed, record?.onsetRate)
+  if (c == null) return null
+  return Math.round(c * 100)
+}
+function markerStyle(idx) {
+  const pct = comfortPct(idx)
+  if (pct == null) return null
+  // Map the comfort % onto the slider's [SPEED_MIN_PCT, SPEED_MAX_PCT] range
+  // as a unitless 0..1 ratio (used by the .comfort-notch positioning calc).
+  const clamped = Math.max(SPEED_MIN_PCT, Math.min(SPEED_MAX_PCT, pct))
+  const ratio = (clamped - SPEED_MIN_PCT) / (SPEED_MAX_PCT - SPEED_MIN_PCT)
+  return { '--marker-pos': ratio.toFixed(4) }
+}
+function speedTooltip(idx) {
+  const c = comfortPct(idx)
+  if (c == null) return 'Pick this song\'s playback speed.'
+  return `Your comfort: ${c}%. Pick higher to push for a bigger score.`
+}
+function onSpeedInput(idx, event) {
+  const v = Number(event.target.value) / 100
+  playlist.setSelectedSpeedAt(idx, v)
 }
 
 function canRemove(idx) {
@@ -156,8 +221,8 @@ function onStop() {
 .row {
   @include panel-card;
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.35rem;
   padding: 0.45rem 0.6rem;
   transition:
     border-color $transition-fast,
@@ -174,6 +239,57 @@ function onStop() {
 
     .marker { color: var(--palm-leaf); }
   }
+}
+.row-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.speed-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-left: 1.75rem; // align with the title (past the marker)
+}
+.slider-wrap {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+.speed {
+  width: 100%;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--accent);
+  position: relative;
+  z-index: 1;
+
+  &:disabled { cursor: not-allowed; opacity: 0.6; }
+}
+.comfort-notch {
+  position: absolute;
+  // The thumb has finite width and slides between (thumb/2) and (100% - thumb/2).
+  // Approximating that inset with a 6px margin keeps the notch visually aligned
+  // with the slider value across browsers.
+  left: calc(6px + (100% - 12px) * var(--marker-pos, 0));
+  top: 50%;
+  width: 2px;
+  height: 14px;
+  margin-left: -1px;
+  margin-top: -7px;
+  background: var(--text-muted);
+  opacity: 0.65;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 1px;
+}
+.speed-value {
+  @include tabular;
+  font-size: 0.75rem;
+  opacity: 0.8;
+  min-width: 2.5rem;
+  text-align: right;
 }
 .marker {
   @include tabular;

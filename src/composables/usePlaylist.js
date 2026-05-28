@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue'
 import { useTabSelection } from '@/composables/useTabSelection'
+import { useCharacterStore } from '@/stores/character'
 
 // Consecutive-completion bonus multiplier table.
 // Index = number of consecutive completes already accumulated.
@@ -9,6 +10,22 @@ function bonusFor(consecutive) {
   if (consecutive <= 1) return 1.0
   if (consecutive >= 4) return BONUS_TABLE[4]
   return BONUS_TABLE[consecutive]
+}
+
+// Slider bounds — kept in sync with PlaylistColumn.
+export const SPEED_MIN = 0.20
+export const SPEED_MAX = 1.00
+
+export function clampSpeed(v) {
+  if (v == null || !Number.isFinite(v)) return null
+  return Math.max(SPEED_MIN, Math.min(SPEED_MAX, v))
+}
+
+// Derive the player's comfort speed for a song given its onset rate.
+// Returns null when onsetRate isn't known yet (first-load case).
+export function comfortFor(speedStat, onsetRate) {
+  if (!onsetRate || onsetRate <= 0) return null
+  return Math.min(SPEED_MAX, (speedStat ?? 0) / onsetRate)
 }
 
 const queue = ref([])              // array of full tab objects (id, title, artist, file, category)
@@ -33,14 +50,44 @@ export function usePlaylist() {
 
   function append(tab) {
     if (!tab?.id) return
+    // Seed the selected speed:
+    // - First-time queue (no cached onset rate) → 100%. The player has no idea
+    //   what their comfort speed is yet; they queue at full tempo and discover.
+    // - Subsequent queues (onset rate cached after first load) → comfort speed.
+    const store = useCharacterStore()
+    const record = store.tabRecords?.[tab.id]
+    const seedSpeed = record?.onsetRate != null
+      ? (clampSpeed(comfortFor(store.character.speed, record.onsetRate)) ?? SPEED_MAX)
+      : SPEED_MAX
+    const entry = { ...tab, selectedSpeed: seedSpeed }
     // Duplicates are allowed: the user can queue the same song multiple times
     // in a row to practice it.
-    queue.value = [...queue.value, tab]
+    queue.value = [...queue.value, entry]
     // First tab → load immediately and mark as current (user still presses Play).
     if (queue.value.length === 1) {
       currentIndex.value = 0
       selectTab(tab)
     }
+  }
+
+  // Called when useAlphaTab has just parsed the score and computed the comfort
+  // speed for the current entry. Resolves a null selectedSpeed to the comfort
+  // value so the slider reads correctly from now on.
+  function resolveSelectedSpeed(index, fallback) {
+    const entries = queue.value
+    if (index < 0 || index >= entries.length) return
+    if (entries[index].selectedSpeed != null) return
+    const next = entries.slice()
+    next[index] = { ...next[index], selectedSpeed: clampSpeed(fallback) }
+    queue.value = next
+  }
+
+  function setSelectedSpeedAt(index, value) {
+    const entries = queue.value
+    if (index < 0 || index >= entries.length) return
+    const next = entries.slice()
+    next[index] = { ...next[index], selectedSpeed: clampSpeed(value) }
+    queue.value = next
   }
 
   function removeAt(index) {
@@ -166,5 +213,7 @@ export function usePlaylist() {
     isPlayedAt,
     isQueued,
     consumeAutoPlay,
+    resolveSelectedSpeed,
+    setSelectedSpeedAt,
   }
 }

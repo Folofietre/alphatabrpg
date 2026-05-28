@@ -12,6 +12,13 @@
         <span>Beats played</span>
         <strong>{{ result.beatCount }}</strong>
       </li>
+      <li v-if="result.selectedSpeed != null">
+        <span>Speed</span>
+        <strong>
+          {{ Math.round(result.selectedSpeed * 100) }}%
+          <em v-if="result.aboveComfort" class="above-comfort">stretched</em>
+        </strong>
+      </li>
       <li>
         <span>Outcome</span>
         <strong>{{ outcomeLabel }}</strong>
@@ -28,6 +35,7 @@
         <strong>
           {{ formatScore(recordDelta.scoreBefore) }} → {{ formatScore(recordDelta.scoreAfter) }}
         </strong>
+        <em v-if="stretchTag" class="stretch-tag">{{ stretchTag }}</em>
       </p>
       <p v-else-if="currentScoreLine" class="score-line">
         🏆 <strong>{{ currentScoreLine }}</strong>
@@ -36,6 +44,9 @@
       <h4>{{ anyGain ? 'Gains & losses' : 'No changes' }}</h4>
       <p v-if="result.bonusMultiplier" class="bonus-line">
         Streak bonus: ×{{ result.bonusMultiplier.toFixed(2) }} applied to positive gains.
+      </p>
+      <p v-if="stretchBonus > 0" class="bonus-line">
+        Stretch bonus: +{{ stretchBonus }} Speed for pushing past comfort.
       </p>
       <ul class="gains">
         <li>
@@ -120,6 +131,15 @@ const currentScoreLine = computed(() => {
     return formatScore(recordDelta.value.scoreAfter)
   }
   return null
+})
+
+const stretchBonus = computed(() => Math.round(props.result.xpGained?.stretchSpeed ?? 0))
+const stretchTag = computed(() => {
+  if (!props.result.aboveComfort) return ''
+  if (props.result.comfortSpeed == null || props.result.selectedSpeed == null) return ''
+  const delta = Math.round((props.result.selectedSpeed - props.result.comfortSpeed) * 100)
+  if (delta <= 0) return ''
+  return `at +${delta}% above comfort`
 })
 
 const crossedNeutral = computed(() => {
@@ -215,6 +235,21 @@ function formatScore(n) {
   margin: 0;
   font-size: 0.85rem;
   color: var(--palm-leaf);
+}
+.above-comfort {
+  margin-left: 0.35rem;
+  font-size: 0.7rem;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.75;
+  color: var(--faded-copper);
+}
+.stretch-tag {
+  margin-left: 0.4rem;
+  font-style: italic;
+  font-size: 0.78rem;
+  opacity: 0.8;
 }
 .high-score {
   margin: 0.25rem 0;

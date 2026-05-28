@@ -15,7 +15,7 @@
       </div>
     </header>
     <div v-for="stat in stats" :key="stat.key" class="stat">
-      <label>{{ stat.label }}</label>
+      <label :title="stat.hint">{{ stat.label }}</label>
       <div class="bar" :title="`Next milestone: ${stat.milestone}`">
         <div class="fill" :style="{ width: `${stat.ratio * 100}%` }" />
       </div>
@@ -42,6 +42,12 @@ function milestoneFor(stat) {
   return Math.ceil((stat + 1) / 500) * 500
 }
 
+const HINTS = {
+  speed: 'Comfort speed scales with this stat. Push above to grow.',
+  dexterity: 'Drives the per-beat hit roll. Higher = fewer wrong notes.',
+  endurance: 'Maximum notes per run before you collapse from fatigue.',
+}
+
 function statRow(key, label, value) {
   const ms = milestoneFor(value)
   return {
@@ -50,6 +56,7 @@ function statRow(key, label, value) {
     value,
     milestone: ms,
     ratio: Math.max(0, Math.min(1, value / ms)),
+    hint: HINTS[key] ?? '',
   }
 }
 

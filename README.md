@@ -185,11 +185,31 @@ A locked category is rendered in the library only if it carries a `hint`; withou
 
 | Stat | Type | Start | Floor | Cap | Effect |
 |---|---|---:|---:|---:|---|
-| Speed | integer | 30 | 30 | none | Caps the playback tempo. `playbackMultiplier = min(1, speed / scoreOnsetRate)` |
+| Speed | integer | 30 | 30 | none | Defines the **comfort speed** per song: `comfortSpeed = min(1, speed / scoreOnsetRate)`. The user picks the actual playback speed; over-comfort picks penalise each roll. |
 | Dexterity | integer | random **50..100** | 50 | none | Compared against per-beat DC via Bradley-Terry. |
 | Endurance | integer | 30 | 30 | none | Per-session "note budget" (stamina). |
 
 Penalties never push a stat below its floor. There is no upper cap — a future ultra-hard tab can demand stat values that are currently unreachable.
+
+### Per-song playback speed
+
+Playback tempo is **player-chosen**, not stat-driven. Each playlist row gets a slider (`SPEED_MIN = 0.20`..`SPEED_MAX = 1.00`, 1% steps). The Speed stat only sets the **comfort threshold**. From the comfort speed and the user's pick, an `overSpeed` divisor is computed:
+
+```
+overSpeed = max(1, selectedSpeed / comfortSpeed)
+effectiveDex /= overSpeed
+```
+
+So picking at or below comfort never penalises (floor is 1); picking 2× comfort halves effective Dexterity for each roll. `api.playbackSpeed` is set to the raw `selectedSpeed`, so `beatExhaustion` (driven by real-time beat duration) and the high-score multiplier scale naturally.
+
+A completed run *above* comfort grants a **+5 Speed bonus** on top of the base gain — Speed only grows when the player stretches.
+
+Slider seeding (in `usePlaylist.append`):
+
+- **First-time queue** (no cached `onsetRate`) → `selectedSpeed = 1.0` (100%). The player doesn't know their comfort yet.
+- **Subsequent queues** (`onsetRate` cached) → `selectedSpeed = comfortFor(speed, onsetRate)`.
+
+`onsetRate` is cached eagerly by `cacheTabOnsetRate(tabId, onsetRate)` in `scoreLoaded`, so even a too-short session that never reaches `recordTabSession` still primes future appends with the comfort default. Custom file drops (no playlist entry) default to `1.0`.
 
 ### Per-beat loop ([useAlphaTab.js](src/composables/useAlphaTab.js))
 
@@ -197,7 +217,7 @@ On each `playedBeatChanged`:
 
 1. Resolve the *pre-rolled* outcome for the current beat (rolled one beat earlier so the wrong-pitch transposition is set before audio starts → no synth pitch-bend slide).
 2. Drain stamina by `beatExhaustion(beat, lastNote, effectiveBpm)`.
-3. Pre-roll the next beat with `rollBeatAccuracy(effectiveDex, beat, lastNote, effectiveBpm)` where `effectiveDex = effectiveDexFor(character.dexterity, currentFamiliarity)`.
+3. Pre-roll the next beat with `rollBeatAccuracy(effectiveDex, beat, lastNote, effectiveBpm)` where `effectiveDex = effectiveDexFor(character.dexterity, currentFamiliarity) / overSpeed`.
 4. If stamina ≤ 0 → `endSession('exhausted')`.
 
 Per-beat **Difficulty Class** (DC) is computed by [`beatDC()`](src/utils/rpgEngine.js):
@@ -228,8 +248,8 @@ So unfamiliar songs penalise (−20%) and mastered songs reward (+20%) proportio
 
 | Outcome | When | Speed | Dexterity | Endurance |
 |---|---|---|---|---|
-| `completed` + accuracy > 70% | `playerFinished` | +10 | +10 | +5 |
-| `completed` + accuracy ≤ 70% | `playerFinished` | +10 | +4 | +5 |
+| `completed` + accuracy > 70% | `playerFinished` | +10 (+5 if above comfort) | +10 | +5 |
+| `completed` + accuracy ≤ 70% | `playerFinished` | +10 (+5 if above comfort) | +4 | +5 |
 | `stopped` | Stop button | +1 | +1 | −2 |
 | `exhausted` | stamina depleted | 0 | 0 | −5 |
 

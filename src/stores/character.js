@@ -49,7 +49,12 @@ const emptyTabRecord = () => ({
   bestScore: null,           // integer; bigger numbers on harder songs
   familiarity: 0,
   dc: null,                  // P95 beat DC, cached on first load
+  onsetRate: null,           // P95 onset rate (used to derive comfort speed)
 })
+
+// Extra Speed XP awarded when a player completes a song *above* their comfort
+// speed. Stacks with the streak multiplier the same way base XP does.
+const STRETCH_SPEED_BONUS = 5
 
 function gainsFor(outcome, accuracy) {
   // outcome: 'completed' | 'stopped' | 'exhausted'
@@ -128,6 +133,20 @@ export const useCharacterStore = defineStore('character', {
       this.notesPlayed = 0
     },
 
+    // Cache the score's onset rate on first load so the next time this tab is
+    // queued the playlist seeds the speed slider to the player's comfort speed
+    // instead of 100%. No-op when already cached or when tabId is missing.
+    cacheTabOnsetRate(tabId, onsetRate) {
+      if (!tabId || onsetRate == null) return
+      const existing = this.tabRecords[tabId] ?? emptyTabRecord()
+      if (existing.onsetRate != null) return
+      this.tabRecords = {
+        ...this.tabRecords,
+        [tabId]: { ...existing, onsetRate },
+      }
+      this.save()
+    },
+
     spendNotes(amount) {
       this.notesPlayed += amount
     },
@@ -135,7 +154,7 @@ export const useCharacterStore = defineStore('character', {
     // Single source of truth for per-tab record updates. Bumps counts, tracks
     // best score on completion, caches the score DC, and grows familiarity
     // modulated by the player's skill vs. the song's DC.
-    recordTabSession({ tabId, outcome, accuracy, playbackMultiplier, difficulty }) {
+    recordTabSession({ tabId, outcome, accuracy, playbackMultiplier, difficulty, onsetRate }) {
       if (!tabId) return null
       const existing = this.tabRecords[tabId] ?? emptyTabRecord()
       const now = new Date().toISOString()
@@ -147,6 +166,10 @@ export const useCharacterStore = defineStore('character', {
       // Cache song DC the first time we know it.
       if (difficulty != null && existing.dc == null) {
         next.dc = difficulty
+      }
+      // Cache onset rate the first time we know it (used to derive comfort).
+      if (onsetRate != null && existing.onsetRate == null) {
+        next.onsetRate = onsetRate
       }
 
       let scorePB = false
@@ -200,6 +223,8 @@ export const useCharacterStore = defineStore('character', {
       bonusMultiplier = 1,
       playbackMultiplier = 1,
       difficulty = null,
+      onsetRate = null,
+      aboveComfort = false,
     }) {
       // Sessions too short to count: no XP, no penalty, no record bump.
       if (beatCount < MIN_BEATS_FOR_OUTCOME) {
@@ -219,11 +244,16 @@ export const useCharacterStore = defineStore('character', {
       }
 
       const base = gainsFor(outcome, accuracy)
+      // Reward stretching: a +5 Speed bonus when the player completes a song
+      // above their comfort speed. Stacks with the streak multiplier.
+      const stretchSpeed = outcome === 'completed' && aboveComfort ? STRETCH_SPEED_BONUS : 0
+      const baseSpeed = base.speed + stretchSpeed
       // Multiplier only boosts positive gains; penalties stay raw.
       const xpGained = {
-        speed:     base.speed     > 0 ? base.speed     * bonusMultiplier : base.speed,
+        speed:     baseSpeed      > 0 ? baseSpeed      * bonusMultiplier : baseSpeed,
         dexterity: base.dexterity > 0 ? base.dexterity * bonusMultiplier : base.dexterity,
         endurance: base.endurance > 0 ? base.endurance * bonusMultiplier : base.endurance,
+        stretchSpeed,
       }
       const before = { ...this.character }
 
@@ -239,7 +269,7 @@ export const useCharacterStore = defineStore('character', {
       }
 
       const recordDelta = this.recordTabSession({
-        tabId, outcome, accuracy, playbackMultiplier, difficulty,
+        tabId, outcome, accuracy, playbackMultiplier, difficulty, onsetRate,
       })
 
       this.history.unshift({
@@ -251,7 +281,7 @@ export const useCharacterStore = defineStore('character', {
       if (this.history.length > 20) this.history.pop()
 
       this.save()
-      return { ...actual, recordDelta }
+      return { ...actual, stretchSpeed, recordDelta }
     },
 
     reset() {

@@ -1,4 +1,4 @@
-import { ref, watch, onUnmounted } from 'vue'
+import { ref, watch, computed, onUnmounted } from 'vue'
 import * as alphaTab from '@coderline/alphatab'
 import { useCharacterStore } from '@/stores/character'
 import { useSettings } from '@/composables/useSettings'
@@ -10,7 +10,7 @@ import {
   effectiveDexFor,
 } from '@/utils/rpgEngine'
 import { findPlayableTrack, INSTRUMENT_META } from '@/utils/instruments'
-import { usePlaylist } from '@/composables/usePlaylist'
+import { usePlaylist, comfortFor, clampSpeed, SPEED_MAX } from '@/composables/usePlaylist'
 
 export function useAlphaTab(containerRef) {
   const store = useCharacterStore()
@@ -28,9 +28,12 @@ export function useAlphaTab(containerRef) {
   let currentTransposition = 0
   let nextOutcome = null    // outcome decided for the *next* beat to be played
   let lastNote = null       // last Note resolved by a roll (drives physicalDistance chaining)
-  let playbackMultiplier = 1 // computed at scoreLoaded from speed stat vs score onset rate
+  let playbackMultiplier = 1 // user-selected playback speed for the current run (0.20..1.00)
   let currentFamiliarity = 0 // snapshotted from tabRecords on scoreLoaded
   let currentDifficulty = null // P95 DC of the current score, forwarded to applySessionXP
+  let currentOnsetRate = null  // P95 onset rate of the matched track, forwarded to applySessionXP
+  let currentComfortSpeed = 1  // min(1, speed/onsetRate) — slider's "neutral" point
+  let currentOverSpeed = 1     // max(1, selectedSpeed/comfortSpeed) — dex penalty divisor
 
   function applyTransposition(semitones) {
     if (!api.value || semitones === currentTransposition) return
@@ -50,7 +53,9 @@ export function useAlphaTab(containerRef) {
     }
     // Per-song muscle memory: shift the base dexterity by the current
     // familiarity for this tab (signed; penalty at 0, bonus near the cap).
-    const dex = effectiveDexFor(store.character.dexterity, currentFamiliarity)
+    // Then divide by the over-speed factor — picking faster than your comfort
+    // makes each beat harder.
+    const dex = effectiveDexFor(store.character.dexterity, currentFamiliarity) / currentOverSpeed
     const roll = rollBeatAccuracy(dex, beat, lastNote, effectiveBpm())
     lastNote = roll.lastNote
     nextOutcome = { success: roll.success, beat }
@@ -94,6 +99,8 @@ export function useAlphaTab(containerRef) {
       bonusMultiplier,
       playbackMultiplier,
       difficulty: currentDifficulty,
+      onsetRate: currentOnsetRate,
+      aboveComfort: playbackMultiplier > currentComfortSpeed + 1e-6,
     })
 
     // Advance — onSongCompleted internally triggers the next-load via
@@ -115,6 +122,7 @@ export function useAlphaTab(containerRef) {
     const title = api.value.score?.title || 'Unknown score'
     const beatCount = sessionStats.value.totalBeats
 
+    const aboveComfort = playbackMultiplier > currentComfortSpeed + 1e-6
     const xpGained = store.applySessionXP({
       tabId: currentTabId,
       title,
@@ -124,6 +132,8 @@ export function useAlphaTab(containerRef) {
       bonusMultiplier,
       playbackMultiplier,
       difficulty: currentDifficulty,
+      onsetRate: currentOnsetRate,
+      aboveComfort,
     })
 
     sessionResult.value = {
@@ -137,6 +147,9 @@ export function useAlphaTab(containerRef) {
       bonusMultiplier: bonusMultiplier !== 1 ? bonusMultiplier : undefined,
       tooShort: xpGained?.tooShort === true,
       playlistFinished: playlist.isRunning.value && outcome === 'completed',
+      selectedSpeed: playbackMultiplier,
+      comfortSpeed: currentComfortSpeed,
+      aboveComfort,
     }
     isPlaying.value = false
 
@@ -206,10 +219,30 @@ export function useAlphaTab(containerRef) {
         api.value.changeTrackVolume(others, backingVolume.value)
       }
 
-      // Derive playback tempo from character Speed vs the score's onset rate (P95)
-      // computed on the matched track only.
-      const onsetRate = scoreOnsetRate(score, match)
-      playbackMultiplier = Math.min(1, store.character.speed / Math.max(1, onsetRate))
+      // Compute the song's onset rate (P95) and the player's comfort speed.
+      // Cache the onset rate on the tabRecord so the *next* time this tab is
+      // queued, the playlist seeds the slider to comfort instead of 100%.
+      currentOnsetRate = scoreOnsetRate(score, match)
+      currentComfortSpeed = comfortFor(store.character.speed, currentOnsetRate) ?? SPEED_MAX
+      if (currentTabId) store.cacheTabOnsetRate(currentTabId, currentOnsetRate)
+
+      const playlistEntry = currentTabId
+        ? playlist.queue.value[playlist.currentIndex.value]
+        : null
+      let selected = playlistEntry?.selectedSpeed
+      if (currentTabId && playlistEntry) {
+        if (selected == null) {
+          // Defensive fallback — append() always seeds a value, so we should
+          // never hit this path in practice.
+          selected = SPEED_MAX
+          playlist.resolveSelectedSpeed(playlist.currentIndex.value, selected)
+        }
+      } else {
+        // File drop / no playlist entry — default to 100% (full experience).
+        selected = SPEED_MAX
+      }
+      playbackMultiplier = selected
+      currentOverSpeed = Math.max(1, selected / Math.max(0.0001, currentComfortSpeed))
       api.value.playbackSpeed = playbackMultiplier
       api.value.masterVolume = volume.value
 
@@ -302,6 +335,21 @@ export function useAlphaTab(containerRef) {
     if (others.length) api.value.changeTrackVolume(others, v)
   })
 
+  // Live-react to the slider for the currently-loaded tab. While not playing,
+  // we keep playbackMultiplier / overSpeed in sync so pressing Play uses the
+  // freshest selection. The slider is locked during runs anyway.
+  const currentSelectedSpeed = computed(() => {
+    const idx = playlist.currentIndex.value
+    return playlist.queue.value[idx]?.selectedSpeed ?? null
+  })
+  const stopSpeedWatch = watch(currentSelectedSpeed, (v) => {
+    if (v == null) return
+    if (isPlaying.value) return
+    playbackMultiplier = v
+    currentOverSpeed = Math.max(1, v / Math.max(0.0001, currentComfortSpeed))
+    if (api.value) api.value.playbackSpeed = v
+  })
+
   function loadFile(file) {
     if (!api.value) return
     currentTabId = null
@@ -321,6 +369,25 @@ export function useAlphaTab(containerRef) {
   function play() {
     if (!api.value) return
     if (isPlaying.value) return
+
+    // If the result panel from a previous run is still on screen, treat Play
+    // as an implicit Replay. Otherwise endSession() would early-return on the
+    // next outcome ("sessionResult already set") and the panel would never
+    // update.
+    if (sessionResult.value) {
+      sessionResult.value = null
+      store.resetStamina()
+      if (playlist.length.value > 1) {
+        // Multi-song queue: restart from index 0. restart() arms autoPlay,
+        // which makes the first scoreLoaded callback play() automatically —
+        // nothing else to do here.
+        playlist.restart()
+        return
+      }
+      // Single song — rewind and fall through to a normal play below.
+      rewind()
+    }
+
     if (playlist.length.value > 0 && !playlist.isRunning.value) {
       store.resetStamina()
       playlist.markRunStarted()
@@ -353,6 +420,7 @@ export function useAlphaTab(containerRef) {
   onUnmounted(() => {
     stopVolumeWatch()
     stopBackingWatch()
+    stopSpeedWatch()
     api.value?.destroy()
   })
 
