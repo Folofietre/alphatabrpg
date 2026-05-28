@@ -55,7 +55,7 @@
               aria-hidden="true"
             />
           </span>
-          <span class="speed-value">{{ speedLabel(idx) }}</span>
+          <span class="speed-value">Tempo: {{ speedLabel(idx) }}</span>
         </div>
       </li>
     </ul>
