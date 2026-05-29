@@ -60,7 +60,7 @@ const hasCharacter = computed(() => !!store.character.instrument)
 
 const tabs = [
   { id: 'scores', label: 'Scores' },
-  { id: 'rewards', label: 'Rewards' },
+  { id: 'rewards', label: 'Bonus' },
 ]
 const activeTab = ref('scores')
 </script>

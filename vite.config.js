@@ -58,6 +58,21 @@ async function readCategoriesConfig(tabsDir) {
   }
 }
 
+async function readRewardsConfig(tabsDir) {
+  const configPath = path.join(tabsDir, 'rewards.json')
+  try {
+    const raw = await fs.readFile(configPath, 'utf-8')
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed.rewards)) return []
+    return parsed.rewards
+  } catch (err) {
+    if (err.code !== 'ENOENT') {
+      console.warn('[tabs-index] Failed to read rewards.json:', err.message)
+    }
+    return []
+  }
+}
+
 async function listTabsInCategory(tabsDir, categoryId, base) {
   const categoryDir = path.join(tabsDir, categoryId)
   let entries
@@ -87,7 +102,7 @@ async function buildTabsManifest(tabsDir, base) {
   const categories = await readCategoriesConfig(tabsDir)
   if (!categories) {
     console.warn('[tabs-index] No categories.json at the root of public/tabs/. Manifest will be empty.')
-    return { categories: [], tabs: [] }
+    return { categories: [], tabs: [], rewards: [] }
   }
 
   const sortedCategories = [...categories].sort(
@@ -106,14 +121,24 @@ async function buildTabsManifest(tabsDir, base) {
       order: cat.order ?? 0,
       unlock: cat.unlock ?? { type: 'always' },
       hint: cat.hint ?? null,
-      // Optional reward array — applied once when the player completes every
-      // tab in this category (for their instrument). Each entry:
-      //   { stat: 'speed'|'dexterity'|'endurance', mode: 'flat'|'percent', value, label? }
-      reward: Array.isArray(cat.reward) ? cat.reward : (cat.reward ? [cat.reward] : []),
     })
   }
 
-  return { categories: normalizedCategories, tabs }
+  // Rewards live in their own config file. Each reward has a unique `id`, a
+  // `trigger` (currently only `category_completed`, extensible to time / streak
+  // / stat thresholds in the future), and an `effects` array of stat changes.
+  const rawRewards = await readRewardsConfig(tabsDir)
+  const rewards = rawRewards
+    .filter((r) => r && typeof r.id === 'string' && r.trigger && Array.isArray(r.effects))
+    .map((r) => ({
+      id: r.id,
+      label: r.label ?? r.id,
+      hint: r.hint ?? null,
+      trigger: r.trigger,
+      effects: r.effects,
+    }))
+
+  return { categories: normalizedCategories, tabs, rewards }
 }
 
 function tabsIndexPlugin() {

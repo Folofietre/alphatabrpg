@@ -1,0 +1,77 @@
+{
+  "rewards": [
+    {
+      "id": "steady_hand",
+      "label": "Steady Hand",
+      "hint": "Complete every Absolute Beginners exercise.",
+      "trigger": { "type": "category_completed", "category": "beginnerlesson" },
+      "effects": [
+        { "stat": "dexterity", "mode": "flat", "value": 10 }
+      ]
+    },
+    {
+      "id": "light_fingers",
+      "label": "Light Fingers",
+      "hint": "Complete every Beginners exercise.",
+      "trigger": { "type": "category_completed", "category": "beginnerlesson2" },
+      "effects": [
+        { "stat": "speed", "mode": "flat", "value": 10 }
+      ]
+    },
+    {
+      "id": "scale_master",
+      "label": "Scale Master",
+      "hint": "Master the Pentatonic Scale.",
+      "trigger": { "type": "category_completed", "category": "pentatonic" },
+      "effects": [
+        { "stat": "dexterity", "mode": "percent", "value": 2 }
+      ]
+    },
+    {
+      "id": "tireless_beginner",
+      "label": "Tireless Beginner",
+      "hint": "Play every children's tune.",
+      "trigger": { "type": "category_completed", "category": "firststeps" },
+      "effects": [
+        { "stat": "endurance", "mode": "flat", "value": 20 }
+      ]
+    },
+    {
+      "id": "crowd_pleaser",
+      "label": "Crowd-Pleaser",
+      "hint": "Master the Classic Beginner Songs.",
+      "trigger": { "type": "category_completed", "category": "classicbeginnersongs" },
+      "effects": [
+        { "stat": "speed", "mode": "percent", "value": 2 }
+      ]
+    },
+    {
+      "id": "showman",
+      "label": "Showman",
+      "hint": "Master the Classic Songs.",
+      "trigger": { "type": "category_completed", "category": "classicadvancedsongs" },
+      "effects": [
+        { "stat": "dexterity", "mode": "percent", "value": 3 }
+      ]
+    },
+    {
+      "id": "campfire_endurance",
+      "label": "Campfire Endurance",
+      "hint": "Sit by the Ukrainian firecamp until the last note.",
+      "trigger": { "type": "category_completed", "category": "ukrainianfirecamp" },
+      "effects": [
+        { "stat": "endurance", "mode": "percent", "value": 5 }
+      ]
+    },
+    {
+      "id": "picking_virtuoso",
+      "label": "Picking Virtuoso",
+      "hint": "Complete every Fingerpicking piece.",
+      "trigger": { "type": "category_completed", "category": "fingerpicking" },
+      "effects": [
+        { "stat": "dexterity", "mode": "flat", "value": 50 },
+        { "stat": "speed", "mode": "percent", "value": 3 }
+      ]
+    }
+  ]
+}

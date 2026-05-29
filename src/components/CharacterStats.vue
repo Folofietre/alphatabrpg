@@ -14,16 +14,15 @@
         <p v-if="instrumentMeta" class="role">{{ instrumentMeta.label }}</p>
       </div>
     </header>
-    <div v-for="stat in stats" :key="stat.key" class="stat">
+    <div v-for="stat in stats" :key="stat.key" class="stat" :title="stat.breakdown">
       <label :title="stat.hint">{{ stat.label }}</label>
-      <div class="bar" :title="`Next milestone: ${stat.milestone}. Floor: ${stat.floor} (can't drop below).`">
+      <div class="bar" :title="`Next milestone: ${stat.milestone}. Floor: ${stat.floor}`">
         <div class="fill" :style="{ width: `${stat.ratio * 100}%` }" />
       </div>
       <span class="value">
         {{ stat.value }}<sup
           v-if="stat.bonusPct > 0"
           class="bonus"
-          :title="`${stat.bonusPct.toFixed(1)}% reward bonus — effective ${stat.effective}`"
         >+{{ stat.bonusPct.toFixed(stat.bonusPct >= 10 ? 0 : 1) }}%</sup>
       </span>
     </div>
@@ -59,7 +58,22 @@ function formatStat(v) {
   return Number((v ?? 0).toFixed(2))
 }
 
-function statRow(key, label, value, floor, multiplier, effective) {
+function buildBreakdown(value, flat, multiplier, effective) {
+  // value = earned + flat. We surface that split so hovering the stat tells
+  // the player exactly where each point came from.
+  const earned = Math.max(0, value - flat)
+  const bonusPct = (multiplier - 1) * 100
+  const lines = [
+    `Earned: ${formatStat(earned)}`,
+  ]
+  if (flat > 0)     lines.push(`Flat rewards: +${formatStat(flat)}`)
+  if (bonusPct > 0) lines.push(`Percent bonus: +${bonusPct.toFixed(bonusPct >= 10 ? 0 : 1)}%`)
+  // Tabular alignment via newlines (HTML title supports them).
+  lines.push(`= ${formatStat(effective)} effective`)
+  return lines.join('\n')
+}
+
+function statRow(key, label, value, floor, multiplier, effective, flat) {
   const next = milestoneFor(value)
   const prev = next - MILESTONE_STEP
   // bonusPct is the % gain from reward multipliers. `multiplier` is 1.0 + sum.
@@ -72,6 +86,7 @@ function statRow(key, label, value, floor, multiplier, effective) {
     floor,
     effective: formatStat(effective),
     bonusPct,
+    breakdown: buildBreakdown(value, flat, multiplier, effective),
     // Progress inside the current 50-point segment.
     ratio: Math.max(0, Math.min(1, (value - prev) / MILESTONE_STEP)),
     hint: HINTS[key] ?? '',
@@ -79,9 +94,9 @@ function statRow(key, label, value, floor, multiplier, effective) {
 }
 
 const stats = computed(() => [
-  statRow('speed', 'Speed', store.character.speed, store.floors.speed, store.multipliers.speed, store.effectiveSpeed),
-  statRow('dexterity', 'Dexterity', store.character.dexterity, store.floors.dexterity, store.multipliers.dexterity, store.effectiveDexterity),
-  statRow('endurance', 'Endurance', store.character.endurance, store.floors.endurance, store.multipliers.endurance, store.effectiveEndurance),
+  statRow('speed', 'Speed', store.character.speed, store.floors.speed, store.multipliers.speed, store.effectiveSpeed, store.flatBonuses.speed),
+  statRow('dexterity', 'Dexterity', store.character.dexterity, store.floors.dexterity, store.multipliers.dexterity, store.effectiveDexterity, store.flatBonuses.dexterity),
+  statRow('endurance', 'Endurance', store.character.endurance, store.floors.endurance, store.multipliers.endurance, store.effectiveEndurance, store.flatBonuses.endurance),
 ])
 </script>
 

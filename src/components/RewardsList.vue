@@ -1,32 +1,30 @@
 <template>
   <aside class="rewards">
     <header class="rewards-header">
-      <h2>Rewards</h2>
-      <span class="hint">Clear a category to unlock its reward.</span>
+      <h2>Bonus</h2>
     </header>
 
-    <p v-if="categoriesWithRewards.length === 0" class="empty">
-      No categories have rewards yet.
+    <p v-if="rewards.length === 0" class="empty">
+      No bonuses configured yet.
     </p>
 
     <ul v-else class="list">
       <li
-        v-for="cat in categoriesWithRewards"
-        :key="cat.id"
+        v-for="r in rewards"
+        :key="r.id"
         class="card"
-        :class="{ claimed: cat.claimed, unlocked: cat.unlocked && !cat.claimed }"
+        :class="{ claimed: r.claimed, unlocked: r.unlocked && !r.claimed }"
       >
         <header class="card-head">
           <span class="marker" aria-hidden="true">
-            {{ cat.claimed ? '✓' : (cat.unlocked ? '★' : '🔒') }}
+            {{ r.claimed ? '✓' : (r.unlocked ? '★' : '🔒') }}
           </span>
-          <span class="title">{{ cat.label }}</span>
-          <span class="progress">{{ cat.done }} / {{ cat.total }}</span>
+          <span class="title">{{ r.label }}</span>
         </header>
-        <ul class="rewards-list">
-          <li v-for="(r, i) in cat.rewards" :key="i" class="reward-row">
-            <span class="reward-label">{{ r.label || describeReward(r) }}</span>
-            <span class="reward-value">{{ describeReward(r) }}</span>
+        <p v-if="r.hint" class="hint">{{ r.hint }}</p>
+        <ul class="effects">
+          <li v-for="(e, i) in r.effects" :key="i" class="effect-row">
+            <span class="effect-value">{{ describeReward(e) }}</span>
           </li>
         </ul>
       </li>
@@ -37,7 +35,7 @@
 <script setup>
 import { useRewards } from '@/composables/useRewards'
 
-const { categoriesWithRewards, describeReward } = useRewards()
+const { rewardsList: rewards, describeReward } = useRewards()
 </script>
 
 <style scoped lang="scss">
@@ -48,22 +46,12 @@ const { categoriesWithRewards, describeReward } = useRewards()
   flex-direction: column;
   gap: 0.6rem;
 }
-.rewards-header {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-
-  h2 {
-    @include section-label;
-    margin: 0;
-    font-size: 1rem;
-    letter-spacing: 0.02em;
-    opacity: 0.85;
-  }
-  .hint {
-    @include hint-text;
-    font-size: 0.78rem;
-  }
+.rewards-header h2 {
+  @include section-label;
+  margin: 0;
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+  opacity: 0.85;
 }
 .empty {
   @include hint-text;
@@ -75,14 +63,14 @@ const { categoriesWithRewards, describeReward } = useRewards()
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.3rem;
 }
 .card {
   @include panel-card;
-  padding: 0.5rem 0.65rem;
+  padding: 0.45rem 0.6rem;
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.2rem;
   opacity: 0.7;
   transition:
     border-color $transition-fast,
@@ -116,31 +104,24 @@ const { categoriesWithRewards, describeReward } = useRewards()
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.progress {
-  @include tabular;
+.hint {
+  @include hint-text;
+  margin: 0;
+  padding-left: 1.75rem;
   font-size: 0.75rem;
-  opacity: 0.75;
 }
-.rewards-list {
+.effects {
   list-style: none;
   margin: 0;
   padding: 0 0 0 1.75rem;
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
+  gap: 0.05rem;
 }
-.reward-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
+.effect-row {
   font-size: 0.8rem;
 }
-.reward-label {
-  font-style: italic;
-  opacity: 0.85;
-}
-.reward-value {
+.effect-value {
   @include tabular;
   font-weight: 600;
   color: var(--palm-leaf);

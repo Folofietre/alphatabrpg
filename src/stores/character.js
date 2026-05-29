@@ -57,6 +57,15 @@ const defaultMultipliers = () => ({
   endurance: 1,
 })
 
+// Mirror of flat-mode rewards already folded into character.{stat}. Tracking
+// the sum separately lets CharacterStats decompose the displayed value into
+// "earned + flat-rewards + percent-bonus" without ambiguity.
+const defaultFlatBonuses = () => ({
+  speed: 0,
+  dexterity: 0,
+  endurance: 0,
+})
+
 // Compute the next floor for a stat: the higher of its current floor and the
 // largest 50-multiple ≤ the new value. Floors only ratchet up — never down.
 function nextFloor(currentFloor, newValue) {
@@ -115,7 +124,8 @@ export const useCharacterStore = defineStore('character', {
     character: defaultCharacter(),
     floors: defaultFloors(),
     multipliers: defaultMultipliers(),
-    claimedRewards: [],  // category IDs whose reward has already been granted
+    flatBonuses: defaultFlatBonuses(),
+    claimedRewards: [],  // reward IDs that have already been granted
     history: [],
     notesPlayed: 0,
     tabRecords: {},
@@ -126,13 +136,15 @@ export const useCharacterStore = defineStore('character', {
     // values the gameplay derivations should consume (comfort, BT roll,
     // stamina). The raw `character.speed/dex/endurance` stay untouched so
     // milestones / floors track earned XP, not buffed effective values.
-    effectiveSpeed:     (s) => Math.floor((s.character.speed     ?? 0) * (s.multipliers.speed     ?? 1)),
-    effectiveDexterity: (s) => Math.floor((s.character.dexterity ?? 0) * (s.multipliers.dexterity ?? 1)),
-    effectiveEndurance: (s) => Math.floor((s.character.endurance ?? 0) * (s.multipliers.endurance ?? 1)),
+    // No flooring — display rounds at the call site; gameplay derivations
+    // tolerate fractional stats.
+    effectiveSpeed:     (s) => (s.character.speed     ?? 0) * (s.multipliers.speed     ?? 1),
+    effectiveDexterity: (s) => (s.character.dexterity ?? 0) * (s.multipliers.dexterity ?? 1),
+    effectiveEndurance: (s) => (s.character.endurance ?? 0) * (s.multipliers.endurance ?? 1),
 
-    accuracyThreshold: (s) => Math.floor((s.character.dexterity ?? 0) * (s.multipliers.dexterity ?? 1)),
+    accuracyThreshold: (s) => (s.character.dexterity ?? 0) * (s.multipliers.dexterity ?? 1),
     stamina: (s) => {
-      const eff = Math.max(1, Math.floor((s.character.endurance ?? 0) * (s.multipliers.endurance ?? 1)))
+      const eff = Math.max(1, (s.character.endurance ?? 0) * (s.multipliers.endurance ?? 1))
       return Math.max(0, 1 - s.notesPlayed / eff)
     },
   },
@@ -160,6 +172,7 @@ export const useCharacterStore = defineStore('character', {
             endurance: nextFloor(ENDURANCE_FLOOR, this.character.endurance),
           }
       this.multipliers = { ...defaultMultipliers(), ...(saved.multipliers ?? {}) }
+      this.flatBonuses = { ...defaultFlatBonuses(), ...(saved.flatBonuses ?? {}) }
       this.claimedRewards = Array.isArray(saved.claimedRewards) ? saved.claimedRewards : []
     },
 
@@ -180,6 +193,7 @@ export const useCharacterStore = defineStore('character', {
         endurance: nextFloor(ENDURANCE_FLOOR, this.character.endurance),
       }
       this.multipliers = defaultMultipliers()
+      this.flatBonuses = defaultFlatBonuses()
       this.claimedRewards = []
       this.notesPlayed = 0
       this.history = []
@@ -192,6 +206,7 @@ export const useCharacterStore = defineStore('character', {
         character: this.character,
         floors: this.floors,
         multipliers: this.multipliers,
+        flatBonuses: this.flatBonuses,
         claimedRewards: this.claimedRewards,
         history: this.history,
         tabRecords: this.tabRecords,
@@ -364,6 +379,7 @@ export const useCharacterStore = defineStore('character', {
       this.character = defaultCharacter()
       this.floors = defaultFloors()
       this.multipliers = defaultMultipliers()
+      this.flatBonuses = defaultFlatBonuses()
       this.claimedRewards = []
       this.history = []
       this.notesPlayed = 0
@@ -371,22 +387,56 @@ export const useCharacterStore = defineStore('character', {
       localStorage.removeItem(SAVE_KEY)
     },
 
-    // Apply a category's reward array (one-time). The caller (useRewards)
-    // is responsible for verifying completion conditions before invoking this.
-    // No-op if the category is already claimed.
-    claimCategoryReward(categoryId, rewards) {
-      if (!categoryId) return null
-      if (this.claimedRewards.includes(categoryId)) return null
+    // Recompute flatBonuses + multipliers from the canonical source of truth
+    // (claimedRewards × manifest reward definitions). Idempotent: safe to run
+    // at every manifest load. Necessary for old saves that pre-date
+    // flatBonuses tracking — they have raw stats already bumped by past flat
+    // rewards but `flatBonuses` mirrors stuck at 0.
+    //
+    // The raw `character.{stat}` values are NOT touched here. Flat rewards
+    // were already folded in at claim time; this just rebuilds the metadata
+    // mirrors so the tooltip decomposition is accurate.
+    reconcileRewardState(manifestRewards) {
+      const stats = ['speed', 'dexterity', 'endurance']
+      const expectedFlat = { speed: 0, dexterity: 0, endurance: 0 }
+      const expectedMult = { speed: 1, dexterity: 1, endurance: 1 }
+      for (const id of this.claimedRewards) {
+        const reward = (manifestRewards ?? []).find((r) => r.id === id)
+        if (!reward) continue
+        for (const e of reward.effects ?? []) {
+          if (!stats.includes(e.stat)) continue
+          const v = Number(e.value) || 0
+          if (e.mode === 'flat') expectedFlat[e.stat] += v
+          else if (e.mode === 'percent') expectedMult[e.stat] *= 1 + v / 100
+        }
+      }
+      const flatDrift = stats.some((s) => Math.abs((this.flatBonuses[s] ?? 0) - expectedFlat[s]) > 1e-9)
+      const multDrift = stats.some((s) => Math.abs((this.multipliers[s] ?? 1) - expectedMult[s]) > 1e-9)
+      if (flatDrift) this.flatBonuses = expectedFlat
+      if (multDrift) this.multipliers = expectedMult
+      if (flatDrift || multDrift) this.save()
+    },
+
+    // Apply a reward's effects (one-time per reward ID). The caller
+    // (useRewards) is responsible for verifying the reward's trigger before
+    // invoking this. No-op if the rewardId is already claimed.
+    claimReward(rewardId, effects) {
+      if (!rewardId) return null
+      if (this.claimedRewards.includes(rewardId)) return null
       const applied = []
-      for (const r of rewards ?? []) {
+      for (const r of effects ?? []) {
         if (!r || !r.stat) continue
         const stat = r.stat
         if (!['speed', 'dexterity', 'endurance'].includes(stat)) continue
         if (r.mode === 'flat') {
           // Add to the raw stat; floor ratchets via stepStat.
-          const stepped = stepStat(this.character[stat], this.floors[stat], Number(r.value) || 0)
+          const delta = Number(r.value) || 0
+          const stepped = stepStat(this.character[stat], this.floors[stat], delta)
           this.character[stat] = stepped.value
           this.floors[stat] = stepped.floor
+          // Mirror the flat addition so CharacterStats can decompose
+          // "displayed = earned + flat rewards + percent bonus" later.
+          this.flatBonuses[stat] = (this.flatBonuses[stat] ?? 0) + delta
           applied.push({ ...r })
         } else if (r.mode === 'percent') {
           // Compounded continuous multiplier. 1% adds 0.01.
@@ -395,7 +445,7 @@ export const useCharacterStore = defineStore('character', {
           applied.push({ ...r })
         }
       }
-      this.claimedRewards = [...this.claimedRewards, categoryId]
+      this.claimedRewards = [...this.claimedRewards, rewardId]
       this.save()
       return applied
     },
