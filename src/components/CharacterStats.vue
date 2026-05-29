@@ -19,11 +19,11 @@
       <div class="bar" :title="`Next milestone: ${stat.milestone}. Floor: ${stat.floor}`">
         <div class="fill" :style="{ width: `${stat.ratio * 100}%` }" />
       </div>
-      <span class="value">
+      <span class="value" :class="`tone-${stat.tone}`">
         {{ stat.value }}<sup
-          v-if="stat.bonusPct > 0"
+          v-if="stat.bonusPct !== 0"
           class="bonus"
-        >+{{ stat.bonusPct.toFixed(stat.bonusPct >= 10 ? 0 : 1) }}%</sup>
+        >{{ stat.bonusPct > 0 ? '+' : '' }}{{ stat.bonusPct.toFixed(Math.abs(stat.bonusPct) >= 10 ? 0 : 1) }}%</sup>
       </span>
     </div>
   </section>
@@ -76,8 +76,16 @@ function buildBreakdown(value, flat, multiplier, effective) {
 function statRow(key, label, value, floor, multiplier, effective, flat) {
   const next = milestoneFor(value)
   const prev = next - MILESTONE_STEP
-  // bonusPct is the % gain from reward multipliers. `multiplier` is 1.0 + sum.
-  const bonusPct = Math.max(0, (multiplier - 1) * 100)
+  // bonusPct is the % delta from reward multipliers. `multiplier` is 1.0 ± sum.
+  const bonusPct = (multiplier - 1) * 100
+  const earned = Math.max(0, value - flat)
+  // Tone: positive when effective > earned (boosted by any reward),
+  // negative when effective < earned (e.g. future malus), neutral otherwise.
+  const tone = effective > earned + 1e-9
+    ? 'positive'
+    : effective < earned - 1e-9
+      ? 'negative'
+      : 'neutral'
   return {
     key,
     label,
@@ -86,6 +94,7 @@ function statRow(key, label, value, floor, multiplier, effective, flat) {
     floor,
     effective: formatStat(effective),
     bonusPct,
+    tone,
     breakdown: buildBreakdown(value, flat, multiplier, effective),
     // Progress inside the current 50-point segment.
     ratio: Math.max(0, Math.min(1, (value - prev) / MILESTONE_STEP)),
@@ -158,14 +167,17 @@ const stats = computed(() => [
   text-align: right;
   font-size: 0.85rem;
   opacity: 0.85;
+
+  &.tone-positive { color: var(--gain); opacity: 1; }
+  &.tone-negative { color: var(--loss); opacity: 1; }
 }
 .bonus {
   margin-left: 2px;
   font-size: 0.65rem;
   font-weight: 600;
-  color: var(--palm-leaf);
   vertical-align: super;
   line-height: 1;
   cursor: help;
+  color: inherit;
 }
 </style>
