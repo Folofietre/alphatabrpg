@@ -51,6 +51,36 @@
 
       <div class="divider" />
 
+      <div class="save-zone">
+        <span class="zone-label">Save data</span>
+        <div class="save-buttons">
+          <button type="button" class="save-btn" @click="onExportClick">
+            Export
+          </button>
+          <button
+            type="button"
+            class="save-btn"
+            :disabled="isPlaying"
+            @click="onImportClick"
+          >
+            Import…
+          </button>
+        </div>
+        <input
+          ref="importInput"
+          type="file"
+          accept="application/json,.json"
+          class="hidden-input"
+          @change="onImportFile"
+        />
+        <p v-if="importMessage" class="zone-hint" :class="{ warn: !importOk }">
+          {{ importMessage }}
+        </p>
+        <p v-else class="zone-hint">Download a JSON backup or restore one.</p>
+      </div>
+
+      <div class="divider" />
+
       <div class="danger-zone">
         <span class="zone-label">Danger zone</span>
         <button
@@ -80,6 +110,63 @@ const store = useCharacterStore()
 
 const open = ref(false)
 const panel = ref(null)
+const importInput = ref(null)
+const importMessage = ref('')
+const importOk = ref(true)
+
+function triggerDownload(filename, text) {
+  const blob = new Blob([text], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  // Defer revoke so the browser has time to start the download.
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+function onExportClick() {
+  const payload = store.exportSaveData()
+  const stamp = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+  const name = (store.character.name || 'musician').replace(/\W+/g, '-').toLowerCase()
+  triggerDownload(`alphatab-rpg-${name}-${stamp}.json`, JSON.stringify(payload, null, 2))
+  importMessage.value = 'Save exported.'
+  importOk.value = true
+}
+
+function onImportClick() {
+  if (isPlaying.value) return
+  importMessage.value = ''
+  importInput.value?.click()
+}
+
+async function onImportFile(e) {
+  const file = e.target.files?.[0]
+  // Reset the input so re-picking the same file fires `change` again.
+  e.target.value = ''
+  if (!file) return
+  const ok = window.confirm(
+    `Import "${file.name}"?\n\nThis will REPLACE your current save — exported it first if you want a backup.`,
+  )
+  if (!ok) return
+  try {
+    const text = await file.text()
+    const parsed = JSON.parse(text)
+    const result = store.importSaveData(parsed)
+    if (!result.ok) {
+      importMessage.value = `Import failed: ${result.reason}`
+      importOk.value = false
+      return
+    }
+    importMessage.value = 'Save imported.'
+    importOk.value = true
+  } catch (err) {
+    importMessage.value = `Import failed: ${err?.message ?? 'invalid file'}`
+    importOk.value = false
+  }
+}
 
 function toggle() {
   open.value = !open.value
@@ -202,10 +289,29 @@ input[type='range'] {
 .divider {
   @include divider;
 }
+.save-zone,
 .danger-zone {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+}
+.save-buttons {
+  display: flex;
+  gap: 0.4rem;
+}
+.save-btn {
+  @include button-accent;
+  flex: 1;
+  font-size: 0.82rem;
+  padding: 0.3rem 0.6rem;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+.hidden-input {
+  display: none;
 }
 .zone-label {
   @include section-label;

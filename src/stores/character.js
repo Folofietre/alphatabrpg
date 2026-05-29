@@ -375,6 +375,55 @@ export const useCharacterStore = defineStore('character', {
       return { ...actual, stretchSpeed, recordDelta }
     },
 
+    // Build the save envelope as a JSON-serialisable object. Used by the
+    // Settings export button. The shape mirrors what `save()` writes to
+    // localStorage with a `_schema` version stamp for future migrations.
+    exportSaveData() {
+      return {
+        _schema: SAVE_KEY,
+        exportedAt: new Date().toISOString(),
+        character: this.character,
+        floors: this.floors,
+        multipliers: this.multipliers,
+        flatBonuses: this.flatBonuses,
+        claimedRewards: this.claimedRewards,
+        history: this.history,
+        tabRecords: this.tabRecords,
+      }
+    },
+
+    // Replace the current save with the contents of an exported file.
+    // Returns { ok: true } on success or { ok: false, reason } on failure.
+    // The schema stamp must match SAVE_KEY — we don't migrate across schemas.
+    importSaveData(parsed) {
+      if (!parsed || typeof parsed !== 'object') {
+        return { ok: false, reason: 'Not a valid save file.' }
+      }
+      if (parsed._schema && parsed._schema !== SAVE_KEY) {
+        return { ok: false, reason: `Save schema mismatch (expected ${SAVE_KEY}, got ${parsed._schema}).` }
+      }
+      if (!parsed.character || typeof parsed.character !== 'object') {
+        return { ok: false, reason: 'Save is missing a character payload.' }
+      }
+      // Write straight to localStorage then re-hydrate via load() so the same
+      // defaults / merging logic applies to both first-load and import paths.
+      const payload = {
+        character: parsed.character,
+        floors: parsed.floors,
+        multipliers: parsed.multipliers,
+        flatBonuses: parsed.flatBonuses,
+        claimedRewards: parsed.claimedRewards,
+        history: parsed.history,
+        tabRecords: parsed.tabRecords,
+        savedAt: new Date().toISOString(),
+      }
+      localStorage.setItem(SAVE_KEY, JSON.stringify(payload))
+      // notesPlayed isn't persisted normally — reset stamina on import.
+      this.notesPlayed = 0
+      this.load()
+      return { ok: true }
+    },
+
     reset() {
       this.character = defaultCharacter()
       this.floors = defaultFloors()
