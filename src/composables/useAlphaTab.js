@@ -11,11 +11,13 @@ import {
 } from '@/utils/rpgEngine'
 import { findPlayableTrack, INSTRUMENT_META } from '@/utils/instruments'
 import { usePlaylist, comfortFor, SPEED_MAX } from '@/composables/usePlaylist'
+import { useRewards } from '@/composables/useRewards'
 
 export function useAlphaTab(containerRef) {
   const store = useCharacterStore()
   const { volume, backingVolume } = useSettings()
   const playlist = usePlaylist()
+  const rewards = useRewards()
   const api = ref(null)
   const isReady = ref(false)
   const isPlaying = ref(false)
@@ -70,7 +72,7 @@ export function useAlphaTab(containerRef) {
     // familiarity for this tab (signed; penalty at 0, bonus near the cap).
     // Then divide by the over-speed factor — picking faster than your comfort
     // makes each beat harder.
-    const dex = effectiveDexFor(store.character.dexterity, currentFamiliarity) / currentOverSpeed
+    const dex = effectiveDexFor(store.effectiveDexterity, currentFamiliarity) / currentOverSpeed
     const roll = rollBeatAccuracy(dex, beat, lastNote, effectiveBpm())
     lastNote = roll.lastNote
     nextOutcome = { success: roll.success, beat }
@@ -120,6 +122,13 @@ export function useAlphaTab(containerRef) {
       aboveComfort,
     })
 
+    // If this completion clears the song's category for the first time, the
+    // category's reward is granted now. The applied rewards are attached to
+    // the song's run-entry so SessionResult can surface them.
+    const claimedRewards = outcome === 'completed'
+      ? rewards.checkClaimForTab(currentTabId)
+      : []
+
     const status = playlist.recordSongAndStep({
       tabId: currentTabId,
       title,
@@ -131,6 +140,7 @@ export function useAlphaTab(containerRef) {
       aboveComfort,
       xpGained,
       recordDelta: xpGained?.recordDelta ?? null,
+      claimedRewards,
     })
 
     if (status === 'finished') {
@@ -200,7 +210,7 @@ export function useAlphaTab(containerRef) {
       // Cache the onset rate on the tabRecord so the *next* time this tab is
       // queued, the playlist seeds the slider to comfort instead of 100%.
       currentOnsetRate = scoreOnsetRate(score, match)
-      currentComfortSpeed = comfortFor(store.character.speed, currentOnsetRate) ?? SPEED_MAX
+      currentComfortSpeed = comfortFor(store.effectiveSpeed, currentOnsetRate) ?? SPEED_MAX
       if (currentTabId) store.cacheTabOnsetRate(currentTabId, currentOnsetRate)
 
       // Resolve the selected speed for this load.

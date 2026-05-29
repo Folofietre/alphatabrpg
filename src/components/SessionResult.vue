@@ -66,6 +66,15 @@
       <p v-if="stretchBonus > 0" class="bonus-line">
         Stretch bonus: +{{ stretchBonus }} Speed for pushing past comfort.
       </p>
+      <div v-if="claimedRewards.length > 0" class="rewards-claim">
+        <p class="rewards-claim-head">🎁 Category reward unlocked!</p>
+        <ul class="rewards-claim-list">
+          <li v-for="(r, i) in claimedRewards" :key="i">
+            <strong>{{ r.label || describeReward(r) }}</strong>
+            <span class="muted"> — {{ describeReward(r) }}</span>
+          </li>
+        </ul>
+      </div>
       <ul class="gains">
         <li>
           Speed
@@ -103,7 +112,10 @@
 <script setup>
 import { computed } from 'vue'
 import { FAMILIARITY_NEUTRAL } from '@/utils/rpgEngine'
+import { useRewards } from '@/composables/useRewards'
 import ComfortBar from './ComfortBar.vue'
+
+const { describeReward } = useRewards()
 
 const props = defineProps({
   result: {
@@ -153,6 +165,7 @@ const currentScoreLine = computed(() => {
 })
 
 const stretchBonus = computed(() => Math.round(props.result.xpGained?.stretchSpeed ?? 0))
+const claimedRewards = computed(() => props.result.claimedRewards ?? [])
 const stretchTag = computed(() => {
   if (!props.result.aboveComfort) return ''
   if (props.result.comfortSpeed == null || props.result.selectedSpeed == null) return ''
@@ -254,6 +267,29 @@ function formatScore(n) {
   margin: 0;
   font-size: 0.85rem;
   color: var(--palm-leaf);
+}
+.rewards-claim {
+  margin: 0.4rem 0 0;
+  padding: 0.55rem 0.75rem;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  border-radius: $radius-sm;
+}
+.rewards-claim-head {
+  margin: 0 0 0.25rem;
+  font-weight: 600;
+  color: var(--palm-leaf);
+}
+.rewards-claim-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  font-size: 0.85rem;
+
+  .muted { opacity: 0.75; }
 }
 .songs {
   list-style: none;

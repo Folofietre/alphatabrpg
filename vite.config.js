@@ -106,6 +106,10 @@ async function buildTabsManifest(tabsDir, base) {
       order: cat.order ?? 0,
       unlock: cat.unlock ?? { type: 'always' },
       hint: cat.hint ?? null,
+      // Optional reward array — applied once when the player completes every
+      // tab in this category (for their instrument). Each entry:
+      //   { stat: 'speed'|'dexterity'|'endurance', mode: 'flat'|'percent', value, label? }
+      reward: Array.isArray(cat.reward) ? cat.reward : (cat.reward ? [cat.reward] : []),
     })
   }
 

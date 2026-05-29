@@ -5,7 +5,10 @@
       "label": "Guitar Exercises for Absolute Beginners",
       "description": "Absolute beginners exercises.",
       "order": 1,
-      "unlock": { "type": "always" }
+      "unlock": { "type": "always" },
+      "reward": [
+        { "stat": "endurance", "mode": "flat", "value": 10, "label": "Steady Hand" }
+      ]
     },
     {
       "id": "beginnerlesson2",
@@ -13,7 +16,10 @@
       "description": "Beginners exercises.",
       "order": 2,
       "unlock": { "type": "all_completed", "category": "beginnerlesson" },
-      "hint": "Complete every absolute beginner lesson track."
+      "hint": "Complete every absolute beginner lesson track.",
+      "reward": [
+        { "stat": "speed", "mode": "flat", "value": 10, "label": "Light Fingers" }
+      ]
     },
     {
       "id": "pentatonic",
@@ -21,7 +27,10 @@
       "description": "Discover the Pentatonic Scale.",
       "order": 3,
       "unlock": { "type": "all_completed", "category": "beginnerlesson2" },
-      "hint": "Complete every beginner lesson track."
+      "hint": "Complete every beginner lesson track.",
+      "reward": [
+        { "stat": "dexterity", "mode": "flat", "value": 2, "label": "Scale Master" }
+      ]
     },
     {
       "id": "firststeps",
@@ -29,7 +38,10 @@
       "description": "Children's tunes to find your fingers.",
       "order": 4,
       "unlock": { "type": "all_completed", "category": "pentatonic" },
-      "hint": "Complete every pentatonic lesson track."
+      "hint": "Complete every pentatonic lesson track.",
+      "reward": [
+        { "stat": "endurance", "mode": "flat", "value": 20, "label": "Tireless Beginner" }
+      ]
     },
     {
       "id": "classicbeginnersongs",
@@ -37,7 +49,10 @@
       "description": "The crowd-pleasers for beginners.",
       "order": 5,
       "unlock": { "type": "stat_threshold", "stat": "endurance", "min": 250 },
-      "hint": "Reach 250 Endurance."
+      "hint": "Reach 250 Endurance.",
+      "reward": [
+        { "stat": "speed", "mode": "percent", "value": 1, "label": "Crowd-Pleaser" }
+      ]
     },
     {
       "id": "classicadvancedsongs",
@@ -45,7 +60,21 @@
       "description": "The crowd-pleasers for advanced players.",
       "order": 6,
       "unlock": { "type": "all_completed", "category": "classicbeginnersongs" },
-      "hint": "Complete every Classic Beginner Song track."
+      "hint": "Complete every Classic Beginner Song track.",
+      "reward": [
+        { "stat": "dexterity", "mode": "percent", "value": 1, "label": "Showman" }
+      ]
+    },
+    {
+      "id": "ukrainianfirecamp",
+      "label": "Ukrainian Firecamp",
+      "description": "Sit at the firecamp and relax, Stalker.",
+      "order": 8,
+      "unlock": { "type": "all_completed", "category": "classicbeginnersongs" },
+      "hint": "Complete every Classic Song track.",
+      "reward": [
+        { "stat": "endurance", "mode": "percent", "value": 5, "label": "Campfire Endurance" }
+      ]
     },
     {
       "id": "fingerpicking",
@@ -55,19 +84,15 @@
       "unlock": {
         "type": "any_of",
         "rules": [
-          { "type": "all_completed", "category": "classicsongs" },
+          { "type": "all_completed", "category": "classicadvancedsongs" },
           { "type": "stat_threshold", "stat": "dexterity", "min": 800 }
         ]
       },
-      "hint": "Complete every Classic Song track, or reach 800 Dexterity."
-    },
-    {
-      "id": "ukrainianfirecamp",
-      "label": "Ukrainian Firecamp",
-      "description": "Sit at the firecamp and relax, Stalker.",
-      "order": 8,
-      "unlock": { "type": "all_completed", "category": "classicsongs" },
-      "hint": "Complete every Classic Song track."
+      "hint": "Complete every Classic Song track, or reach 800 Dexterity.",
+      "reward": [
+        { "stat": "dexterity", "mode": "flat", "value": 50, "label": "Picking Virtuoso" },
+        { "stat": "speed", "mode": "percent", "value": 3, "label": "Picking Virtuoso" }
+      ]
     }
   ]
 }

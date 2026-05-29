@@ -79,7 +79,7 @@ export function usePlaylist() {
     // - Already played at least once: start at the player's comfort speed.
     const record = store.tabRecords?.[tab.id]
     const seedSpeed = record?.onsetRate != null
-      ? (clampSpeed(comfortFor(store.character.speed, record.onsetRate)) ?? SPEED_MAX)
+      ? (clampSpeed(comfortFor(store.effectiveSpeed, record.onsetRate)) ?? SPEED_MAX)
       : SPEED_MAX
     const entry = { ...tab, selectedSpeed: seedSpeed }
 
@@ -186,8 +186,12 @@ export function usePlaylist() {
     )
     const aggAccuracy = totalBeats > 0 ? totalSuccess / totalBeats : 0
     let lastPB = null
+    const allClaimedRewards = []
     for (const s of songs) {
       if (s.recordDelta?.scorePB) lastPB = s.recordDelta
+      if (Array.isArray(s.claimedRewards) && s.claimedRewards.length > 0) {
+        allClaimedRewards.push(...s.claimedRewards.map((r) => ({ ...r, tabId: s.tabId, title: s.title })))
+      }
     }
     const lastSong = songs[songs.length - 1] ?? null
 
@@ -206,6 +210,7 @@ export function usePlaylist() {
       aboveComfort: isMulti ? false : (lastSong?.aboveComfort ?? false),
       songs: isMulti ? songs : null,
       lastPB,
+      claimedRewards: allClaimedRewards,
       songsCompletedCount: songs.filter((s) => s.outcome === 'completed').length,
       songsAttemptedCount: songs.length,
     }

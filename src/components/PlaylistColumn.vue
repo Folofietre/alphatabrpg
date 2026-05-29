@@ -136,7 +136,7 @@ function speedLabel(idx) {
 function comfortPct(idx) {
   const tab = queue.value[idx]
   const record = tab?.id ? store.tabRecords?.[tab.id] : null
-  const c = comfortFor(store.character.speed, record?.onsetRate)
+  const c = comfortFor(store.effectiveSpeed, record?.onsetRate)
   if (c == null) return null
   return Math.round(c * 100)
 }

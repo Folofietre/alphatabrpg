@@ -16,10 +16,16 @@
     </header>
     <div v-for="stat in stats" :key="stat.key" class="stat">
       <label :title="stat.hint">{{ stat.label }}</label>
-      <div class="bar" :title="`Next milestone: ${stat.milestone}`">
+      <div class="bar" :title="`Next milestone: ${stat.milestone}. Floor: ${stat.floor} (can't drop below).`">
         <div class="fill" :style="{ width: `${stat.ratio * 100}%` }" />
       </div>
-      <span class="value">{{ stat.value }}</span>
+      <span class="value">
+        {{ stat.value }}<sup
+          v-if="stat.bonusPct > 0"
+          class="bonus"
+          :title="`${stat.bonusPct.toFixed(1)}% reward bonus — effective ${stat.effective}`"
+        >+{{ stat.bonusPct.toFixed(stat.bonusPct >= 10 ? 0 : 1) }}%</sup>
+      </span>
     </div>
   </section>
 </template>
@@ -53,15 +59,19 @@ function formatStat(v) {
   return Number((v ?? 0).toFixed(2))
 }
 
-function statRow(key, label, value, floor) {
+function statRow(key, label, value, floor, multiplier, effective) {
   const next = milestoneFor(value)
   const prev = next - MILESTONE_STEP
+  // bonusPct is the % gain from reward multipliers. `multiplier` is 1.0 + sum.
+  const bonusPct = Math.max(0, (multiplier - 1) * 100)
   return {
     key,
     label,
     value: formatStat(value),
     milestone: next,
     floor,
+    effective: formatStat(effective),
+    bonusPct,
     // Progress inside the current 50-point segment.
     ratio: Math.max(0, Math.min(1, (value - prev) / MILESTONE_STEP)),
     hint: HINTS[key] ?? '',
@@ -69,9 +79,9 @@ function statRow(key, label, value, floor) {
 }
 
 const stats = computed(() => [
-  statRow('speed', 'Speed', store.character.speed, store.floors.speed),
-  statRow('dexterity', 'Dexterity', store.character.dexterity, store.floors.dexterity),
-  statRow('endurance', 'Endurance', store.character.endurance, store.floors.endurance),
+  statRow('speed', 'Speed', store.character.speed, store.floors.speed, store.multipliers.speed, store.effectiveSpeed),
+  statRow('dexterity', 'Dexterity', store.character.dexterity, store.floors.dexterity, store.multipliers.dexterity, store.effectiveDexterity),
+  statRow('endurance', 'Endurance', store.character.endurance, store.floors.endurance, store.multipliers.endurance, store.effectiveEndurance),
 ])
 </script>
 
@@ -113,7 +123,7 @@ const stats = computed(() => [
 }
 .stat {
   display: grid;
-  grid-template-columns: 90px 1fr 60px;
+  grid-template-columns: 90px 1fr 84px;
   align-items: center;
   gap: 0.5rem;
 
@@ -133,5 +143,14 @@ const stats = computed(() => [
   text-align: right;
   font-size: 0.85rem;
   opacity: 0.85;
+}
+.bonus {
+  margin-left: 2px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--palm-leaf);
+  vertical-align: super;
+  line-height: 1;
+  cursor: help;
 }
 </style>

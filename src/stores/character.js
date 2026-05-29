@@ -48,6 +48,15 @@ const defaultFloors = () => ({
   endurance: ENDURANCE_FLOOR,
 })
 
+// Reward multipliers — continuous percent bonuses from category rewards.
+// 1.0 = no bonus. A +1% reward multiplies the relevant entry by 1.01.
+// Applied to *effective* stats; raw stats and milestones remain pristine.
+const defaultMultipliers = () => ({
+  speed: 1,
+  dexterity: 1,
+  endurance: 1,
+})
+
 // Compute the next floor for a stat: the higher of its current floor and the
 // largest 50-multiple ≤ the new value. Floors only ratchet up — never down.
 function nextFloor(currentFloor, newValue) {
@@ -105,14 +114,27 @@ export const useCharacterStore = defineStore('character', {
   state: () => ({
     character: defaultCharacter(),
     floors: defaultFloors(),
+    multipliers: defaultMultipliers(),
+    claimedRewards: [],  // category IDs whose reward has already been granted
     history: [],
     notesPlayed: 0,
     tabRecords: {},
   }),
 
   getters: {
-    accuracyThreshold: (s) => s.character.dexterity,
-    stamina: (s) => Math.max(0, 1 - s.notesPlayed / Math.max(1, s.character.endurance)),
+    // Effective stats: raw earned value × reward multiplier. These are the
+    // values the gameplay derivations should consume (comfort, BT roll,
+    // stamina). The raw `character.speed/dex/endurance` stay untouched so
+    // milestones / floors track earned XP, not buffed effective values.
+    effectiveSpeed:     (s) => Math.floor((s.character.speed     ?? 0) * (s.multipliers.speed     ?? 1)),
+    effectiveDexterity: (s) => Math.floor((s.character.dexterity ?? 0) * (s.multipliers.dexterity ?? 1)),
+    effectiveEndurance: (s) => Math.floor((s.character.endurance ?? 0) * (s.multipliers.endurance ?? 1)),
+
+    accuracyThreshold: (s) => Math.floor((s.character.dexterity ?? 0) * (s.multipliers.dexterity ?? 1)),
+    stamina: (s) => {
+      const eff = Math.max(1, Math.floor((s.character.endurance ?? 0) * (s.multipliers.endurance ?? 1)))
+      return Math.max(0, 1 - s.notesPlayed / eff)
+    },
   },
 
   actions: {
@@ -137,6 +159,8 @@ export const useCharacterStore = defineStore('character', {
             dexterity: nextFloor(DEX_FLOOR, this.character.dexterity),
             endurance: nextFloor(ENDURANCE_FLOOR, this.character.endurance),
           }
+      this.multipliers = { ...defaultMultipliers(), ...(saved.multipliers ?? {}) }
+      this.claimedRewards = Array.isArray(saved.claimedRewards) ? saved.claimedRewards : []
     },
 
     createCharacter({ name, instrument }) {
@@ -155,6 +179,8 @@ export const useCharacterStore = defineStore('character', {
         dexterity: nextFloor(DEX_FLOOR, this.character.dexterity),
         endurance: nextFloor(ENDURANCE_FLOOR, this.character.endurance),
       }
+      this.multipliers = defaultMultipliers()
+      this.claimedRewards = []
       this.notesPlayed = 0
       this.history = []
       this.tabRecords = {}
@@ -165,6 +191,8 @@ export const useCharacterStore = defineStore('character', {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
         character: this.character,
         floors: this.floors,
+        multipliers: this.multipliers,
+        claimedRewards: this.claimedRewards,
         history: this.history,
         tabRecords: this.tabRecords,
         savedAt: new Date().toISOString(),
@@ -335,10 +363,41 @@ export const useCharacterStore = defineStore('character', {
     reset() {
       this.character = defaultCharacter()
       this.floors = defaultFloors()
+      this.multipliers = defaultMultipliers()
+      this.claimedRewards = []
       this.history = []
       this.notesPlayed = 0
       this.tabRecords = {}
       localStorage.removeItem(SAVE_KEY)
+    },
+
+    // Apply a category's reward array (one-time). The caller (useRewards)
+    // is responsible for verifying completion conditions before invoking this.
+    // No-op if the category is already claimed.
+    claimCategoryReward(categoryId, rewards) {
+      if (!categoryId) return null
+      if (this.claimedRewards.includes(categoryId)) return null
+      const applied = []
+      for (const r of rewards ?? []) {
+        if (!r || !r.stat) continue
+        const stat = r.stat
+        if (!['speed', 'dexterity', 'endurance'].includes(stat)) continue
+        if (r.mode === 'flat') {
+          // Add to the raw stat; floor ratchets via stepStat.
+          const stepped = stepStat(this.character[stat], this.floors[stat], Number(r.value) || 0)
+          this.character[stat] = stepped.value
+          this.floors[stat] = stepped.floor
+          applied.push({ ...r })
+        } else if (r.mode === 'percent') {
+          // Compounded continuous multiplier. 1% adds 0.01.
+          const cur = this.multipliers[stat] ?? 1
+          this.multipliers[stat] = cur * (1 + (Number(r.value) || 0) / 100)
+          applied.push({ ...r })
+        }
+      }
+      this.claimedRewards = [...this.claimedRewards, categoryId]
+      this.save()
+      return applied
     },
   },
 })
