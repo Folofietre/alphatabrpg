@@ -32,14 +32,13 @@ import { INSTRUMENT_META } from '@/utils/instruments'
 const store = useCharacterStore()
 const instrumentMeta = computed(() => INSTRUMENT_META[store.character.instrument] ?? null)
 
-// Sliding milestone: round up to the next "tier" so the bar always shows
-// continuous progress toward the next round number. Steps grow at higher
-// values to keep the bar visually meaningful.
+import { MILESTONE_STEP } from '@/stores/character'
+
+// Next milestone above the current value. Milestones are every MILESTONE_STEP
+// (50) points. Once reached, a milestone becomes the new lower bound for the
+// stat — the store ratchets the floor up so the player can never drop back.
 function milestoneFor(stat) {
-  if (stat < 100) return 100
-  if (stat < 500) return Math.ceil((stat + 1) / 100) * 100
-  if (stat < 2000) return Math.ceil((stat + 1) / 250) * 250
-  return Math.ceil((stat + 1) / 500) * 500
+  return Math.floor(stat / MILESTONE_STEP) * MILESTONE_STEP + MILESTONE_STEP
 }
 
 const HINTS = {
@@ -54,22 +53,25 @@ function formatStat(v) {
   return Number((v ?? 0).toFixed(2))
 }
 
-function statRow(key, label, value) {
-  const ms = milestoneFor(value)
+function statRow(key, label, value, floor) {
+  const next = milestoneFor(value)
+  const prev = next - MILESTONE_STEP
   return {
     key,
     label,
     value: formatStat(value),
-    milestone: ms,
-    ratio: Math.max(0, Math.min(1, value / ms)),
+    milestone: next,
+    floor,
+    // Progress inside the current 50-point segment.
+    ratio: Math.max(0, Math.min(1, (value - prev) / MILESTONE_STEP)),
     hint: HINTS[key] ?? '',
   }
 }
 
 const stats = computed(() => [
-  statRow('speed', 'Speed', store.character.speed),
-  statRow('dexterity', 'Dexterity', store.character.dexterity),
-  statRow('endurance', 'Endurance', store.character.endurance),
+  statRow('speed', 'Speed', store.character.speed, store.floors.speed),
+  statRow('dexterity', 'Dexterity', store.character.dexterity, store.floors.dexterity),
+  statRow('endurance', 'Endurance', store.character.endurance, store.floors.endurance),
 ])
 </script>
 

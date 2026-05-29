@@ -189,7 +189,7 @@ A locked category is rendered in the library only if it carries a `hint`; withou
 | Dexterity | integer | random **50..100** | 50 | none | Compared against per-beat DC via Bradley-Terry. |
 | Endurance | integer | 30 | 30 | none | Per-session "note budget" (stamina). |
 
-Penalties never push a stat below its floor. There is no upper cap — a future ultra-hard tab can demand stat values that are currently unreachable.
+Penalties never push a stat below its **floor**. The floor is dynamic: it starts at the constant above and ratchets up every time the stat crosses a 50-point **milestone** (`MILESTONE_STEP = 50`). Reaching Dex 150 permanently locks the floor at 150 — losing XP afterwards can shrink the stat back down to 150 but never below. Floors are persisted in `state.floors = { speed, dexterity, endurance }`. There is no upper cap.
 
 ### Per-song playback speed
 

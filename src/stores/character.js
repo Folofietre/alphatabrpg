@@ -18,12 +18,15 @@ const LEGACY_KEYS = [
   'alphatab_rpg_save',
 ]
 
-// All three stats are now uncapped integers. Floors stop penalties from
-// dropping a player below their starting position; there is no upper bound.
+// All three stats are uncapped integers with a *dynamic* floor: every 50
+// points crossed becomes a new milestone, and the floor ratchets up to the
+// highest milestone the player has ever reached. Losing XP can never bring
+// a stat back below a passed milestone.
 const SPEED_FLOOR = 30
 const DEX_FLOOR = 50          // also the minimum random starter
 const DEX_ROLL_MAX = 100      // max random starter
 const ENDURANCE_FLOOR = 30
+export const MILESTONE_STEP = 50
 
 const MIN_BEATS_FOR_OUTCOME = 10
 
@@ -38,6 +41,19 @@ const defaultCharacter = () => ({
   dexterity: rollInitialDexterity(),
   endurance: ENDURANCE_FLOOR,
 })
+
+const defaultFloors = () => ({
+  speed: SPEED_FLOOR,
+  dexterity: DEX_FLOOR,
+  endurance: ENDURANCE_FLOOR,
+})
+
+// Compute the next floor for a stat: the higher of its current floor and the
+// largest 50-multiple ≤ the new value. Floors only ratchet up — never down.
+function nextFloor(currentFloor, newValue) {
+  const milestone = Math.floor(newValue / MILESTONE_STEP) * MILESTONE_STEP
+  return Math.max(currentFloor, milestone)
+}
 
 const emptyTabRecord = () => ({
   attemptsCount: 0,
@@ -73,14 +89,22 @@ function gainsFor(outcome, accuracy) {
   return { speed: 0, dexterity: 0, endurance: -5 }
 }
 
-// Lower-bound only — stats are uncapped.
-function floor(value, min) {
-  return Math.max(min, value)
+// Apply a delta to a stat, ratcheting the floor up if the new value crosses
+// a 50-point milestone. Returns the clamped value and the (possibly new)
+// floor for that stat.
+function stepStat(currentValue, currentFloor, delta) {
+  const raw = currentValue + delta
+  const floorAfter = nextFloor(currentFloor, raw)
+  return {
+    value: Math.max(floorAfter, raw),
+    floor: floorAfter,
+  }
 }
 
 export const useCharacterStore = defineStore('character', {
   state: () => ({
     character: defaultCharacter(),
+    floors: defaultFloors(),
     history: [],
     notesPlayed: 0,
     tabRecords: {},
@@ -104,6 +128,15 @@ export const useCharacterStore = defineStore('character', {
       this.character = { ...defaultCharacter(), ...(saved.character ?? {}) }
       this.history = saved.history ?? []
       this.tabRecords = saved.tabRecords ?? {}
+      // Restore floors, or derive from current stats for older saves.
+      const savedFloors = saved.floors ?? null
+      this.floors = savedFloors
+        ? { ...defaultFloors(), ...savedFloors }
+        : {
+            speed: nextFloor(SPEED_FLOOR, this.character.speed),
+            dexterity: nextFloor(DEX_FLOOR, this.character.dexterity),
+            endurance: nextFloor(ENDURANCE_FLOOR, this.character.endurance),
+          }
     },
 
     createCharacter({ name, instrument }) {
@@ -114,6 +147,14 @@ export const useCharacterStore = defineStore('character', {
         name: (name ?? '').trim() || 'Musician',
         instrument,
       }
+      // Initial dex roll (50..100) may already sit above the 50-milestone.
+      // Compute starting floors accordingly so a 100-rolled player can't drop
+      // below 100, etc.
+      this.floors = {
+        speed: nextFloor(SPEED_FLOOR, this.character.speed),
+        dexterity: nextFloor(DEX_FLOOR, this.character.dexterity),
+        endurance: nextFloor(ENDURANCE_FLOOR, this.character.endurance),
+      }
       this.notesPlayed = 0
       this.history = []
       this.tabRecords = {}
@@ -123,6 +164,7 @@ export const useCharacterStore = defineStore('character', {
     save() {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
         character: this.character,
+        floors: this.floors,
         history: this.history,
         tabRecords: this.tabRecords,
         savedAt: new Date().toISOString(),
@@ -257,10 +299,16 @@ export const useCharacterStore = defineStore('character', {
       }
       const before = { ...this.character }
 
-      // Uncapped: floor only.
-      this.character.speed     = floor(this.character.speed     + xpGained.speed,     SPEED_FLOOR)
-      this.character.dexterity = floor(this.character.dexterity + xpGained.dexterity, DEX_FLOOR)
-      this.character.endurance = floor(this.character.endurance + xpGained.endurance, ENDURANCE_FLOOR)
+      // Step each stat with a ratcheting floor: crossing a 50-point milestone
+      // raises the floor permanently for that stat.
+      const sp = stepStat(this.character.speed,     this.floors.speed,     xpGained.speed)
+      const dx = stepStat(this.character.dexterity, this.floors.dexterity, xpGained.dexterity)
+      const en = stepStat(this.character.endurance, this.floors.endurance, xpGained.endurance)
+
+      this.character.speed     = sp.value
+      this.character.dexterity = dx.value
+      this.character.endurance = en.value
+      this.floors = { speed: sp.floor, dexterity: dx.floor, endurance: en.floor }
 
       const actual = {
         speed: this.character.speed - before.speed,
@@ -286,6 +334,7 @@ export const useCharacterStore = defineStore('character', {
 
     reset() {
       this.character = defaultCharacter()
+      this.floors = defaultFloors()
       this.history = []
       this.notesPlayed = 0
       this.tabRecords = {}

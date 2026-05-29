@@ -27,7 +27,9 @@ Your initial **Dexterity** is rolled randomly between **50 and 100** at creation
 | Dexterity | 50–100 (random) | 50 | Higher Dexterity = better odds of hitting each beat cleanly. |
 | Endurance | 30 | 30 | Higher Endurance = you can play more notes before collapsing. |
 
-Stats grow when you complete songs and shrink slightly when you fail. **No upper bound** — keep grinding, keep growing. The bar in the UI is purely indicative; it slides to the next round milestone as you climb.
+Stats grow when you complete songs and shrink slightly when you fail. **No upper bound** — keep grinding, keep growing.
+
+Every **50 points** is a **milestone**. Once you reach a milestone, it becomes your new floor for that stat — you can never drop back below it. So if your Dexterity hits 150, even a string of bad runs can't push you under 150 again. The bar fills your current 50-point segment; the tooltip shows your locked-in floor and the next milestone.
 
 ---
 
@@ -109,7 +111,7 @@ For dropped custom files, the default speed is **100%** (challenge mode, you opt
 | **Stopped manually** | +1 | +1 | −2 |
 | **Collapsed from exhaustion** | 0 | 0 | −5 |
 
-Penalties never drop you below the starting floor (Speed 30, Dex 50, Endurance 30). Sessions under 10 beats don't count.
+Penalties never drop you below your current floor — your starting floor (Speed 30, Dex 50, Endurance 30) ratchets up every 50 points you reach. Sessions under 10 beats don't count.
 
 **Strategy:**
 
