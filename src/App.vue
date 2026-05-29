@@ -15,7 +15,9 @@
         <ScorePlayer />
       </div>
       <aside class="right">
-        <CustomScore />
+        <!-- TODO: re-introduce <CustomScore /> as an end-game reward, unlocked
+             once every built-in score is completed. Keeping the component file
+             and its file-drop plumbing alive but unmounted. -->
         <TabLibrary />
       </aside>
     </div>
@@ -32,7 +34,8 @@ import CharacterStats from '@/components/CharacterStats.vue'
 import ScorePlayer from '@/components/ScorePlayer.vue'
 import SettingsMenu from '@/components/SettingsMenu.vue'
 import TabLibrary from '@/components/TabLibrary.vue'
-import CustomScore from '@/components/CustomScore.vue'
+// TODO: re-enable when Custom Score is unlocked as an end-game reward.
+// import CustomScore from '@/components/CustomScore.vue'
 import CharacterSetup from '@/components/CharacterSetup.vue'
 import PlaylistColumn from '@/components/PlaylistColumn.vue'
 import LegalFooter from '@/components/LegalFooter.vue'

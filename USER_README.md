@@ -153,9 +153,7 @@ There's no cap — chasing a higher number on a tab you've already cleared is a 
 
 ## Custom scores
 
-Once you've completed every built-in score at least once (for your instrument), the *Custom score* dropzone unlocks at the top of the right column. Drop any Guitar Pro (`.gp`, `.gp3-5`, `.gpx`) or MusicXML (`.xml`, `.musicxml`) file in there.
-
-Score files themselves are never saved — only your stats and a small session history.
+Coming back as an **end-game reward**: once every built-in score has been completed at least once (for your instrument), the *Custom score* dropzone will unlock and let you drop Guitar Pro / MusicXML files of your own. Disabled for now while we finish the core loop.
 
 ---
 

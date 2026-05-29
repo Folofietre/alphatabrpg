@@ -39,7 +39,6 @@ const {
   loadUrl,
   play,
   stop,
-  rewind,
   clearSessionResult,
   clearLoadError,
   isReady,
@@ -67,24 +66,24 @@ watch(isPlaying, (v) => setPlaying(v))
 
 watch(pendingScore, (score) => {
   if (!score) return
-  if (isPlaying.value) return // locked: can't switch while playing
+  // No isPlaying guard here: every selectTab caller is either guarded by
+  // !isRunning at its source (append/removeAt/onReplay) or is the chained
+  // playlist transition path that explicitly *wants* to swap scores even
+  // though alphaTab's isPlaying state may still read stale=true from a
+  // queued playerStateChanged event. The UI-level lock (TabLibrary disabling
+  // tabs during playback via usePlaybackLock) is what enforces "no manual
+  // switching mid-run".
   clearSessionResult()
   clearLoadError()
   if (score.kind === 'url') loadUrl(score.url, score.tabId ?? null)
   else if (score.kind === 'file') loadFile(score.file)
 })
 
+// Replay and Play are the same action — both start a fresh run from index 0.
+// No separate state to clean up; `play()` clears sessionResult, resets stamina,
+// and calls `playlist.startRun()`.
 function onReplay() {
-  clearSessionResult()
-  store.resetStamina()
-  if (playlistLength.value > 1) {
-    // Multi-song run: restart playlist from the top. restart() calls
-    // selectTab → pendingScore fires → loadUrl runs → scoreLoaded auto-plays.
-    playlist.restart()
-  } else {
-    rewind()
-    play()
-  }
+  play()
 }
 </script>
 

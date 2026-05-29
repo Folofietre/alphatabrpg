@@ -45,7 +45,7 @@
               :max="SPEED_MAX_PCT"
               step="1"
               :value="speedPct(idx)"
-              :disabled="isRunning"
+              :disabled="locked"
               @input="onSpeedInput(idx, $event)"
             />
             <span
@@ -68,15 +68,15 @@
       <button
         type="button"
         class="play"
-        :disabled="isPlaying"
-        :title="isPlaying ? 'Already playing' : 'Start playing'"
+        :disabled="locked"
+        :title="locked ? 'Already running' : 'Start playing'"
         @click="onPlay"
       >▶ Play</button>
       <button
         type="button"
         class="stop"
-        :disabled="!isPlaying"
-        :title="isPlaying ? 'Stop and end the session' : 'Nothing to stop'"
+        :disabled="!isRunning"
+        :title="isRunning ? 'Stop and end the session' : 'Nothing to stop'"
         @click="onStop"
       >■ Stop</button>
     </div>
@@ -85,8 +85,8 @@
       <button
         type="button"
         class="clear"
-        :disabled="isRunning"
-        :title="isRunning ? 'Stop the run first' : 'Empty the playlist'"
+        :disabled="locked"
+        :title="locked ? 'Stop the run first' : 'Empty the playlist'"
         @click="clear"
       >Clear</button>
     </div>
@@ -114,6 +114,9 @@ const currentIndex = computed(() => playlist.currentIndex.value)
 const consecutive = computed(() => playlist.consecutive.value)
 const bonusMultiplier = computed(() => playlist.bonusMultiplier.value)
 const isRunning = computed(() => playlist.isRunning.value)
+// Composite lock: audio is actively playing OR we're mid-run (isPlaying flips
+// briefly off during the chain transition, but the queue must stay frozen).
+const locked = computed(() => isPlaying.value || isRunning.value)
 
 function isPlayedAt(idx) {
   return playlist.isPlayedAt(idx)
@@ -157,9 +160,9 @@ function onSpeedInput(idx, event) {
 }
 
 function canRemove() {
-  // The whole queue is locked while a run is in progress — changing it
-  // mid-playback (current or upcoming entries) would be confusing.
-  return !isRunning.value
+  // The whole queue is locked while playing or mid-run — changing it
+  // (current or upcoming entries) would be confusing.
+  return !locked.value
 }
 
 function removeAt(idx) {

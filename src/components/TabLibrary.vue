@@ -1,5 +1,5 @@
 <template>
-  <aside class="library" :class="{ locked: isPlaying }">
+  <aside class="library" :class="{ locked: libraryLocked }">
     <header class="library-header">
       <h2>Score library</h2>
       <span class="hint">{{ headerHint }}</span>
@@ -31,7 +31,7 @@
               type="button"
               class="card"
               :class="{ completed: tab.completed, queued: queuedIds.has(tab.id) }"
-              :disabled="isPlaying"
+              :disabled="libraryLocked"
               :title="cardTitle(tab)"
               @click="onPick(tab)"
             >
@@ -83,9 +83,14 @@ const { manifest, loading, error } = useTabsManifest()
 
 const openIds = reactive(new Set())
 
+// Locked while audio is actually playing OR while a playlist run is active
+// between songs (isPlaying briefly flips off during the chain transition
+// but the queue must stay frozen until the run ends).
+const libraryLocked = computed(() => isPlaying.value || playlist.isRunning.value)
+
 const headerHint = computed(() => {
   if (loading.value) return 'Loading…'
-  if (isPlaying.value) return 'Locked during play'
+  if (libraryLocked.value) return 'Locked during play'
   return 'Click to queue.'
 })
 
@@ -145,13 +150,14 @@ function toggleOpen(id) {
 }
 
 function cardTitle(tab) {
-  if (isPlaying.value) return 'Stop the current session first'
+  if (libraryLocked.value) return 'Stop the current session first'
   if (queuedIds.value.has(tab.id)) return 'Click again to queue another time'
   return 'Add to playlist'
 }
 
 function onPick(tab) {
-  playlist.append(tab)
+  if (libraryLocked.value) return
+  playlist.appendTab(tab)
 }
 
 function pct(v) {
